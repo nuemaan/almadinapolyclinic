@@ -1,4 +1,4 @@
-// ========== Custom cursor ==========
+// custom cursor — dot follows pointer, ring lags behind
 const dot = document.getElementById('cursor-dot');
 const ring = document.getElementById('cursor-ring');
 let mx = 0, my = 0, rx = 0, ry = 0;
@@ -20,7 +20,7 @@ document.querySelectorAll('a, button, .srv, .doc-card, .t-card, .p-cell, .float-
   el.addEventListener('mouseleave', () => ring?.classList.remove('hover'));
 });
 
-// ========== Scroll reveal ==========
+// Scroll reveal
 const io = new IntersectionObserver((entries) => {
   entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); });
 }, { threshold: 0.12 });
@@ -30,7 +30,7 @@ document.querySelectorAll('.srv, .doc-card, .t-card, .why, .sec-head, .doc-hero,
   io.observe(el);
 });
 
-// ========== Parallax on hero scene ==========
+// Parallax on hero scene
 const scene = document.querySelector('.scene');
 window.addEventListener('mousemove', (e) => {
   if (!scene) return;
@@ -39,7 +39,7 @@ window.addEventListener('mousemove', (e) => {
   scene.style.transform = `translate(${x}px, ${y}px)`;
 });
 
-// ========== Mobile menu ==========
+// Mobile menu
 const toggle = document.querySelector('.menu-toggle');
 const links = document.querySelector('.nav-links');
 toggle?.addEventListener('click', () => {
@@ -52,7 +52,7 @@ toggle?.addEventListener('click', () => {
   });
 });
 
-// ========== Balloon pop game ==========
+// click the floating germs to pop them (kid-friendly mini game)
 const popSounds = ['Zap!', 'Gotcha!', 'Clean!', 'Bye germ!', 'Poof!', 'Healed!'];
 let popScore = 0;
 
@@ -121,7 +121,29 @@ function popBalloon(e) {
 
 document.querySelectorAll('.balloon').forEach(b => b.addEventListener('click', popBalloon));
 
-// ========== Navbar shadow on scroll ==========
+// count up the stat numbers when they enter the viewport
+function animateCounter(el) {
+  if (el.dataset.done) return;
+  el.dataset.done = '1';
+  const numEl = el.querySelector('.num');
+  if (!numEl) return;
+  const target = parseInt(el.dataset.count, 10);
+  const dur = 1600;
+  const start = performance.now();
+  const tick = (t) => {
+    const p = Math.min(1, (t - start) / dur);
+    const val = Math.round(target * (1 - Math.pow(1 - p, 3)));
+    numEl.textContent = val.toLocaleString();
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+const counterIO = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) animateCounter(e.target); });
+}, { threshold: 0.25, rootMargin: '0px 0px -10% 0px' });
+document.querySelectorAll('.stat[data-count]').forEach(el => counterIO.observe(el));
+
+// nav gets a shadow once we scroll past the top
 const nav = document.querySelector('.nav');
 window.addEventListener('scroll', () => {
   if (window.scrollY > 20) nav?.classList.add('scrolled');
