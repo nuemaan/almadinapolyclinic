@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Al Madina Polyclinic — Caring for Little Smiles 🌈</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- Animated cursor -->
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
+<!-- Floating germs — tap to zap! -->
+<div class="balloons" aria-hidden="true" title="Tap the germs to zap them!">
+  <span class="balloon b1">🦠</span>
+  <span class="balloon b2">🦠</span>
+  <span class="balloon b3">🦠</span>
+  <span class="balloon b4">🦠</span>
+  <span class="balloon b5">🦠</span>
+</div>
+
+<!-- Navbar -->
+<header class="nav">
+  <a href="#home" class="logo">
+    <span class="logo-bubble">
+      <svg viewBox="0 0 40 40" width="32" height="32"><circle cx="20" cy="20" r="18" fill="url(#g1)"/><defs><linearGradient id="g1" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ff7cb5"/><stop offset="1" stop-color="#ffc56b"/></linearGradient></defs><text x="20" y="27" text-anchor="middle" font-size="22">🧸</text></svg>
+    </span>
+    <span class="logo-text">Al Madina <em>Polyclinic</em></span>
+  </a>
+  <nav class="nav-links">
+    <a href="#home">Home</a>
+    <a href="#services">Services</a>
+    <a href="#doctors">Doctors</a>
+    <a href="#about">About</a>
+    <a href="#contact">Contact</a>
+  </nav>
+  <a href="#contact" class="pill-btn nav-cta"><span>Visit Us</span> 🚪</a>
+  <button class="menu-toggle" aria-label="Menu">☰</button>
+</header>
+
+<!-- HERO -->
+<section id="home" class="hero">
+  <div class="hero-bg">
+    <div class="orb o1"></div>
+    <div class="orb o2"></div>
+    <div class="orb o3"></div>
+    <svg class="grid-lines" viewBox="0 0 100 100" preserveAspectRatio="none"><defs><pattern id="dots" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="0.3" fill="#ff7cb5" opacity=".3"/></pattern></defs><rect width="100" height="100" fill="url(#dots)"/></svg>
+  </div>
+
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="sticker wiggle">
+        <span>✨ Trusted by 20,000+ families</span>
+      </div>
+      <h1 class="big-title">
+        Little <span class="word-accent"><span>smiles</span><svg viewBox="0 0 200 20"><path d="M5 15 Q 50 2 100 10 T 195 10" stroke="#ffc56b" stroke-width="5" fill="none" stroke-linecap="round"/></svg></span>,<br>
+        <span class="gradient-text">biggest care</span>
+        <span class="star">⭐</span>
+      </h1>
+      <p class="lead">From newborn cuddles to teen check-ups — Al Madina Polyclinic blends warm care with world-class pediatric expertise, right in the heart of Beehama, Ganderbal.</p>
+
+      <div class="hero-actions">
+        <a href="#doctors" class="cta-main">
+          <span>Meet Our Doctors</span>
+          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M5 12h14M13 5l7 7-7 7" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="#contact" class="cta-ghost">📍 Find the clinic</a>
+      </div>
+
+      <div class="trust-row">
+        <div class="avatars">
+          <span>👩</span><span>👨</span><span>👧</span><span>👦</span>
+        </div>
+        <div>
+          <strong>★★★★★</strong>
+          <p>Loved by hundreds of Kashmiri families</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <!-- Animated scene -->
+      <div class="scene">
+        <div class="sun">☀️</div>
+        <div class="cloud c1">☁️</div>
+        <div class="cloud c2">☁️</div>
+
+        <div class="bear-wrap">
+          <div class="bear-bg"></div>
+          <div class="bear">🧸</div>
+          <div class="sparkle sp1">✨</div>
+          <div class="sparkle sp2">💫</div>
+          <div class="sparkle sp3">⭐</div>
+        </div>
+
+        <div class="float-card fc-1 tilt-left">
+          <span class="fc-ico">🩺</span>
+          <div>
+            <strong>Dr. Rayis</strong>
+            <small>Lead Pediatrician</small>
+          </div>
+        </div>
+
+        <div class="float-card fc-2 tilt-right">
+          <span class="fc-ico">💉</span>
+          <div>
+            <strong>Vaccinations</strong>
+            <small>WHO-approved</small>
+          </div>
+        </div>
+
+        <div class="float-card fc-3 tilt-left">
+          <span class="fc-ico pulse">❤️</span>
+          <div>
+            <strong>Healthy kid!</strong>
+            <small>98 bpm · perfect</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- wave divider -->
+  <svg class="wave" viewBox="0 0 1440 100" preserveAspectRatio="none"><path fill="#fff5ec" d="M0,60 C240,100 480,20 720,40 C960,60 1200,100 1440,60 L1440,100 L0,100 Z"/></svg>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee">
+  <div class="marquee-track">
+    <span class="chip c-pink">🌈 Gentle care</span>
+    <span class="chip c-blue">👶 Newborn to teen</span>
+    <span class="chip c-yellow">💉 Full vaccinations</span>
+    <span class="chip c-green">🍎 Nutrition guidance</span>
+    <span class="chip c-purple">🧠 Developmental support</span>
+    <span class="chip c-orange">🩺 Expert pediatricians</span>
+    <span class="chip c-pink">🌈 Gentle care</span>
+    <span class="chip c-blue">👶 Newborn to teen</span>
+    <span class="chip c-yellow">💉 Full vaccinations</span>
+    <span class="chip c-green">🍎 Nutrition guidance</span>
+    <span class="chip c-purple">🧠 Developmental support</span>
+    <span class="chip c-orange">🩺 Expert pediatricians</span>
+  </div>
+</div>
+
+<!-- SERVICES -->
+<section id="services" class="services">
+  <div class="sec-head">
+    <span class="eyebrow">✦ What we do</span>
+    <h2>Care that grows <em>with</em> your child</h2>
+    <p>Every age has its needs. We've got them covered — from first breath to first heartbreak.</p>
+  </div>
+
+  <div class="service-stack">
+    <article class="srv s-1">
+      <div class="srv-num">01</div>
+      <div class="srv-art">👶</div>
+      <div>
+        <h3>Newborn & Neonatal Care</h3>
+        <p>Gentle screenings, growth tracking, and that reassurance every new parent needs.</p>
+        <div class="srv-tags"><span>Age 0–1</span><span>FBNC trained</span></div>
+      </div>
+    </article>
+
+    <article class="srv s-2">
+      <div class="srv-num">02</div>
+      <div class="srv-art">💉</div>
+      <div>
+        <h3>Vaccinations</h3>
+        <p>Full WHO-aligned immunization schedules — done with a smile and a sticker.</p>
+        <div class="srv-tags"><span>All ages</span><span>WHO schedule</span></div>
+      </div>
+    </article>
+
+    <article class="srv s-3">
+      <div class="srv-num">03</div>
+      <div class="srv-art">🩺</div>
+      <div>
+        <h3>General Check-ups</h3>
+        <p>Regular wellness visits to catch things early and celebrate milestones.</p>
+        <div class="srv-tags"><span>Growth</span><span>Development</span></div>
+      </div>
+    </article>
+
+    <article class="srv s-4">
+      <div class="srv-num">04</div>
+      <div class="srv-art">🍎</div>
+      <div>
+        <h3>Pediatric Nutrition</h3>
+        <p>Personalized diet plans by PGPN-certified experts. Happy tummies, happy kids.</p>
+        <div class="srv-tags"><span>PGPN certified</span><span>Growth plans</span></div>
+      </div>
+    </article>
+
+    <article class="srv s-5">
+      <div class="srv-num">05</div>
+      <div class="srv-art">🧠</div>
+      <div>
+        <h3>Pediatric Neurology</h3>
+        <p>Developmental, speech, and behavioral support from a Life Member of the Academy of Pediatric Neurology.</p>
+        <div class="srv-tags"><span>Developmental</span><span>Behavioral</span></div>
+      </div>
+    </article>
+
+    <article class="srv s-6">
+      <div class="srv-num">06</div>
+      <div class="srv-art">🧪</div>
+      <div>
+        <h3>On-site Laboratory</h3>
+        <p>Quick, reliable lab tests right within the clinic — no running around town.</p>
+        <div class="srv-tags"><span>In-house</span><span>Fast results</span></div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- DOCTORS -->
+<section id="doctors" class="doctors">
+  <div class="sec-head">
+    <span class="eyebrow">✦ The team</span>
+    <h2>Meet the humans behind the <em>hugs</em></h2>
+  </div>
+
+  <!-- Featured doctor — hero card -->
+  <article class="doc-hero">
+    <div class="doc-hero-left">
+      <div class="doc-photo">
+        <div class="doc-ring"></div>
+        <div class="doc-emoji">👨‍⚕️</div>
+        <span class="doc-badge">★ Lead</span>
+      </div>
+      <div class="doc-quick">
+        <div><strong>15+</strong><small>Years</small></div>
+        <div><strong>KSA</strong><small>Board Certified</small></div>
+        <div><strong>JCI</strong><small>Accredited hospitals</small></div>
+      </div>
+    </div>
+    <div class="doc-hero-right">
+      <span class="eyebrow pink">Lead Pediatrician</span>
+      <h3>Dr. Rayis Ahmad Rather</h3>
+      <p class="doc-bio">MD · Fellowship in Primary Care Pediatrics · PGPN (Post Graduate in Pediatric Nutrition) · Facility Based New Born Care (FBNC), GB Pant Children Hospital Srinagar · Life Member, Academy of Pediatric Neurology · BLS (Saudi Heart Association) · SMLE Board Certified (KSA)</p>
+
+      <div class="doc-block">
+        <h5>🏥 Hospital Experience</h5>
+        <ul>
+          <li>OHUD Pediatric Hospital — <em>JCI Accredited, Madina Munawara (KSA)</em></li>
+          <li>Indraprastha Apollo Hospital — <em>JCI Accredited, New Delhi</em></li>
+          <li>LD Hospital — <em>Neonatology</em></li>
+        </ul>
+      </div>
+
+      <div class="doc-block">
+        <h5>🕐 Consultation Timings</h5>
+        <div class="tt">
+          <div class="tt-row">
+            <strong>Mon – Sat</strong>
+            <span class="slot">🌅 9:30 AM – 10:30 AM</span>
+            <span class="slot">🌇 4:30 PM – 6:30 PM</span>
+          </div>
+          <div class="tt-row">
+            <strong>Sunday</strong>
+            <span class="slot">🌅 10:00 AM – 1:30 PM</span>
+            <span class="slot closed">🌙 Evening Closed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <h3 class="mini-head">✦ Visiting Consultants</h3>
+  <div class="doc-pair">
+    <article class="doc-card">
+      <div class="dc-top">
+        <div class="dc-avatar dc-a2">👨‍⚕️</div>
+        <div class="dc-reg">Regd. 13283/4817</div>
+      </div>
+      <h4>Dr. Ajaz Ahmad Bhat</h4>
+      <p class="dc-role">General & Laparoscopic Surgeon</p>
+      <ul class="dc-list">
+        <li>MBBS — GMC Srinagar</li>
+        <li>MS General & Minimal Invasive Surgery — SKIMS</li>
+      </ul>
+    </article>
+
+    <article class="doc-card">
+      <div class="dc-top">
+        <div class="dc-avatar dc-a3">👨‍⚕️</div>
+        <div class="dc-reg">Regd. 8901/2379</div>
+      </div>
+      <h4>Dr. Mir Laieg Ishtiyaq</h4>
+      <p class="dc-role">Consultant Dermatologist, Physician & Dermatosurgeon</p>
+      <ul class="dc-list">
+        <li>MBBS — SKIMS</li>
+        <li>DOVL Dermatology — GMC Srinagar</li>
+        <li>MRCP (UK) · MRCP (London)</li>
+        <li>Life Member: IADVL, ACSI</li>
+      </ul>
+      <div class="dc-when">🗓 Every Thursday · 2:00 PM</div>
+    </article>
+  </div>
+</section>
+
+<!-- ABOUT / WHY -->
+<section id="about" class="about">
+  <div class="about-grid">
+    <div class="about-copy">
+      <span class="eyebrow">✦ Why Al Madina</span>
+      <h2>A clinic that feels like a <span class="gradient-text">warm hug</span></h2>
+      <p>We built Al Madina Polyclinic & Laboratory to be the clinic we'd take <em>our own</em> kids to — bright, honest, unhurried, and always kind. World-class medicine with Kashmiri warmth.</p>
+
+      <div class="why-grid">
+        <div class="why"><span>🌈</span><h5>Kid-friendly space</h5><p>Colorful, playful, stress-free.</p></div>
+        <div class="why"><span>🧪</span><h5>In-house lab</h5><p>Tests done on the same visit.</p></div>
+        <div class="why"><span>🕐</span><h5>Real clinic hours</h5><p>Morning & evening, 6 days.</p></div>
+        <div class="why"><span>🚶</span><h5>Walk-ins welcome</h5><p>No appointments needed.</p></div>
+      </div>
+    </div>
+
+    <div class="about-art">
+      <div class="poster">
+        <div class="poster-grid">
+          <div class="p-cell c-pink">🎀</div>
+          <div class="p-cell c-yellow">🌻</div>
+          <div class="p-cell c-blue">🦋</div>
+          <div class="p-cell c-green">🍀</div>
+          <div class="p-cell c-purple">🎨</div>
+          <div class="p-cell c-orange">🧩</div>
+        </div>
+        <div class="poster-label">
+          <small>Est. Ganderbal</small>
+          <strong>Al Madina Polyclinic</strong>
+          <small>& Laboratory</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials">
+  <div class="sec-head center">
+    <span class="eyebrow">✦ Happy parents</span>
+    <h2>Kind words from kinder families</h2>
+  </div>
+
+  <div class="t-cards">
+    <article class="t-card tilt-left">
+      <div class="t-stars">★★★★★</div>
+      <p>"The staff made my daughter feel so comfortable — she actually asks when the next visit is!"</p>
+      <footer><span>👩</span><div><strong>Sara M.</strong><small>Mother of 2</small></div></footer>
+    </article>
+
+    <article class="t-card tilt-right big">
+      <div class="t-stars">★★★★★</div>
+      <p>"Dr. Rayis is patient, kind, thorough, and deeply knowledgeable. Our whole family trusts him with our kids."</p>
+      <footer><span>👨</span><div><strong>Imran K.</strong><small>Ganderbal</small></div></footer>
+    </article>
+
+    <article class="t-card tilt-left">
+      <div class="t-stars">★★★★★</div>
+      <p>"Clean, cheerful, and the on-site lab saved us a whole day of running around."</p>
+      <footer><span>👩</span><div><strong>Noor H.</strong><small>New mom</small></div></footer>
+    </article>
+  </div>
+</section>
+
+<!-- CONTACT / MAP -->
+<section id="contact" class="contact">
+  <div class="contact-wrap">
+    <div class="contact-left">
+      <span class="eyebrow white">✦ Find us</span>
+      <h2>Drop by. We'd love to see you.</h2>
+      <p class="contact-lead">No appointments needed — walk in during clinic hours and our team will welcome you.</p>
+
+      <ul class="c-info">
+        <li>
+          <span class="c-ico">📍</span>
+          <div>
+            <strong>Al-Madina Polyclinic & Laboratory</strong>
+            <small>1st Floor, Al-Rahat Chinar Shopping Complex,<br>Beehama, Ganderbal, Kashmir</small>
+          </div>
+        </li>
+        <li>
+          <span class="c-ico">🕐</span>
+          <div>
+            <strong>Clinic Hours</strong>
+            <small>Mon – Sat · 9:30–10:30 AM &amp; 4:30–6:30 PM<br>Sunday · 10:00 AM – 1:30 PM</small>
+          </div>
+        </li>
+        <li>
+          <span class="c-ico">📞</span>
+          <div>
+            <strong>Call us</strong>
+            <small>+91 000 000 0000</small>
+          </div>
+        </li>
+      </ul>
+
+      <a class="cta-main light" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Al-Rahat+Chinar+Shopping+Complex+Beehama+Ganderbal+Kashmir">
+        <span>Open in Google Maps</span> 🧭
+      </a>
+    </div>
+
+    <div class="contact-right">
+      <div class="map-card">
+        <iframe
+          src="https://www.google.com/maps?q=Al-Rahat+Chinar+Shopping+Complex+Beehama+Ganderbal+Kashmir&output=embed"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          allowfullscreen
+          title="Al Madina Polyclinic map"></iframe>
+      </div>
+      <div class="map-sticker">📍 You'll find us here!</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="foot-top">
+    <div>
+      <a href="#home" class="logo">
+        <span class="logo-bubble">🧸</span>
+        <span class="logo-text">Al Madina <em>Polyclinic</em></span>
+      </a>
+      <p>Caring for little smiles — one check-up at a time. 💛</p>
+    </div>
+    <div>
+      <h5>Explore</h5>
+      <a href="#services">Services</a>
+      <a href="#doctors">Doctors</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <div>
+      <h5>Connect</h5>
+      <div class="socials">
+        <a href="#" aria-label="Facebook">📘</a>
+        <a href="#" aria-label="Instagram">📸</a>
+        <a href="#" aria-label="Twitter">🐦</a>
+        <a href="#" aria-label="YouTube">▶️</a>
+      </div>
+    </div>
+  </div>
+  <div class="foot-bot">© 2026 Al Madina Polyclinic & Laboratory · Beehama, Ganderbal · Made with 💛 for kids</div>
+</footer>
+
+<script src="script.js?v=3"></script>
+</body>
+</html>

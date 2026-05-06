@@ -1,0 +1,5 @@
+.claude/
+.DS_Store
+index-backup.html
+styles-backup.css
+node_modules/
