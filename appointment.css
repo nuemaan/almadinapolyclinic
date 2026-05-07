@@ -258,8 +258,13 @@ a { color: inherit; text-decoration: none; }
 }
 
 .ticket-actions {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  display: flex; flex-direction: column; gap: 10px;
   margin-top: 16px;
+}
+.ticket-actions .appt-ghost {
+  width: 100%;
+  padding: 14px 18px;
+  font-size: 15px;
 }
 
 /* Error state */
@@ -289,7 +294,7 @@ a { color: inherit; text-decoration: none; }
 
 /* Tiny screens */
 @media (max-width: 380px) {
-  .appt-meta, .ticket-info, .ticket-actions { grid-template-columns: 1fr; }
+  .appt-meta, .ticket-info { grid-template-columns: 1fr; }
 }
 
 /* Print (in case anyone prints the ticket) */
