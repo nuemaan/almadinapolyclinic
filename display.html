@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Scan for your number — Al Madina Polyclinic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="display.css?v=1" />
+</head>
+<body>
+
+<!-- Staff-only gate: shown when display.html is opened without ?key=... -->
+<section id="d-gate" class="d-gate hidden">
+  <div class="d-gate-card">
+    <div class="d-gate-emoji">🔒</div>
+    <h2>Staff only</h2>
+    <p>This screen is for the clinic reception desk. If you are a patient, please scan the QR code at the clinic to get your appointment number.</p>
+    <a href="index.html" class="d-gate-link">← Back to website</a>
+  </div>
+</section>
+
+<div class="bg-orbs">
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+</div>
+
+<main class="display hidden" id="d-main">
+  <header class="d-head">
+    <div class="d-logo">
+      <span class="d-bubble">🧸</span>
+      <div>
+        <strong>Al Madina <em>Polyclinic</em></strong>
+        <small>& Laboratory · Beehama, Ganderbal</small>
+      </div>
+    </div>
+    <div class="d-date">
+      <span>📅</span>
+      <strong id="d-date">—</strong>
+    </div>
+  </header>
+
+  <section class="d-main">
+
+    <div class="d-left">
+      <div class="d-tag">✦ Self-serve queue</div>
+      <h1>Scan to get your <span class="grad">appointment number</span> 🎟️</h1>
+
+      <ol class="d-steps">
+        <li><span>1</span> Open your phone camera</li>
+        <li><span>2</span> Point it at the QR code →</li>
+        <li><span>3</span> Tap the link &amp; get your number</li>
+      </ol>
+
+      <div class="d-live">
+        <div class="d-live-label">Latest number issued today</div>
+        <div class="d-live-num" id="d-latest">—</div>
+        <div class="d-live-sub" id="d-live-sub">Be the first patient of the day 👋</div>
+      </div>
+
+      <div class="d-foot">
+        <span>📞 +91 95965 79443</span>
+        <span>·</span>
+        <span id="d-hours">—</span>
+      </div>
+    </div>
+
+    <div class="d-right">
+      <div class="qr-card">
+        <div class="qr-top">
+          <span class="qr-dot"></span>
+          <span class="qr-dot"></span>
+          <span class="qr-dot"></span>
+        </div>
+        <div class="qr-frame">
+          <img id="qr-img" alt="Scan this QR code with your phone camera" />
+          <div class="qr-corners">
+            <span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+        <div class="qr-cta">
+          📱 Point your camera here
+        </div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<script src="queue-token.js?v=1"></script>
+<script src="display.js?v=2"></script>
+</body>
+</html>
