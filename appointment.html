@@ -48,8 +48,17 @@
       <div><span>🏥 Clinic</span><strong>Al Madina Polyclinic</strong></div>
     </div>
 
+    <div class="appt-stepper">
+      <label>How many patients? <small>(one number per child)</small></label>
+      <div class="stepper">
+        <button id="dec-count" type="button" aria-label="Decrease">−</button>
+        <span id="count-display">1</span>
+        <button id="inc-count" type="button" aria-label="Increase">+</button>
+      </div>
+    </div>
+
     <button id="get-number-btn" class="appt-cta">
-      <span>Get my number</span>
+      <span id="get-btn-label">Get my number</span>
       <svg viewBox="0 0 24 24" width="22" height="22"><path d="M5 12h14M13 5l7 7-7 7" stroke="white" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
 
@@ -80,8 +89,9 @@
       <div class="ticket-divider"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
 
       <div class="ticket-num-wrap">
-        <div class="ticket-label">Your number</div>
+        <div class="ticket-label" id="ticket-label">Your number</div>
         <div class="ticket-num" id="ticket-num">—</div>
+        <div class="ticket-nums hidden" id="ticket-nums"></div>
         <div class="ticket-sub" id="ticket-sub">—</div>
       </div>
 
@@ -100,6 +110,8 @@
         ✨ Please show this screen at the reception desk.
       </div>
     </div>
+
+    <button id="add-another-btn" class="appt-ghost add-another">➕ Add another patient</button>
 
     <div class="ticket-actions">
       <a href="https://chat.whatsapp.com/JMPqa6WgubKHnPt6BSeNMV" target="_blank" rel="noopener" class="appt-ghost wa">💬 Join WhatsApp group</a>
