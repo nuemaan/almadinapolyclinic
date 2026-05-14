@@ -79,12 +79,14 @@ function renderTicket(numbers) {
     numsEl.innerHTML = '';
     labelEl.textContent = 'Your number';
     subEl.textContent = `You're the ${ordinal(numbers[0])} patient in today's queue`;
+    subEl.classList.remove('hidden');
   } else {
     numEl.classList.add('hidden');
     numsEl.classList.remove('hidden');
     numsEl.innerHTML = numbers.map(n => `<span class="num-pill">#${n}</span>`).join('');
     labelEl.textContent = `Your ${numbers.length} numbers`;
-    subEl.textContent = `${numbers.length} patients in today's queue`;
+    subEl.textContent = '';
+    subEl.classList.add('hidden');
   }
 
   $('ticket-date').textContent = prettyDate();
@@ -112,16 +114,7 @@ async function incrementOnce() {
 }
 
 // --- Main flows ---
-let requestedCount = 1;
-
-function updateStepper() {
-  $('count-display').textContent = requestedCount;
-  $('get-btn-label').textContent = requestedCount === 1
-    ? 'Get my number'
-    : `Get ${requestedCount} numbers`;
-}
-
-async function getMyNumbers() {
+async function getMyNumber() {
   const token = new URLSearchParams(location.search).get('t');
   if (!await window.QueueToken.isValid(token)) {
     show('gate');
@@ -129,12 +122,9 @@ async function getMyNumbers() {
   }
   show('loading');
   try {
-    const issued = [];
-    for (let i = 0; i < requestedCount; i++) {
-      issued.push(await incrementOnce());
-    }
-    save(issued);
-    renderTicket(issued);
+    const issued = await incrementOnce();
+    save([issued]);
+    renderTicket([issued]);
   } catch (err) {
     console.error('Counter increment failed:', err);
     show('error');
@@ -179,7 +169,6 @@ async function init() {
   $('today-label').textContent = prettyDate();
   $('gate-hours').textContent = todayHours();
   $('year').textContent = new Date().getFullYear();
-  updateStepper();
 
   const saved = loadSaved();
   if (saved) {
@@ -190,18 +179,11 @@ async function init() {
     show(ok ? 'intro' : 'gate');
   }
 
-  $('dec-count').addEventListener('click', () => {
-    if (requestedCount > 1) { requestedCount--; updateStepper(); }
-  });
-  $('inc-count').addEventListener('click', () => {
-    if (requestedCount < MAX_PER_FAMILY) { requestedCount++; updateStepper(); }
-  });
-
-  $('get-number-btn').addEventListener('click', getMyNumbers);
+  $('get-number-btn').addEventListener('click', getMyNumber);
   $('add-another-btn').addEventListener('click', addAnotherPatient);
   $('retry-btn').addEventListener('click', () => {
     const s = loadSaved();
-    if (s) renderTicket(s.numbers); else getMyNumbers();
+    if (s) renderTicket(s.numbers); else getMyNumber();
   });
   $('lost-link').addEventListener('click', (e) => { e.preventDefault(); showLatestCount(); });
   $('back-to-ticket').addEventListener('click', () => {

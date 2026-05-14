@@ -110,46 +110,6 @@ a { color: inherit; text-decoration: none; }
 .appt-meta span { font-size: 12px; color: var(--muted); font-weight: 700; }
 .appt-meta strong { font-family: 'Baloo 2', sans-serif; font-size: 15px; }
 
-/* Stepper for selecting how many patients */
-.appt-stepper {
-  background: var(--cream);
-  border-radius: 18px;
-  padding: 14px 16px;
-  margin-bottom: 14px;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px;
-}
-.appt-stepper label {
-  font-weight: 800; font-size: 14px; color: var(--ink);
-  display: flex; flex-direction: column; line-height: 1.3;
-}
-.appt-stepper label small { font-weight: 600; color: var(--muted); font-size: 12px; }
-.stepper {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: white;
-  border-radius: 999px;
-  padding: 4px;
-  box-shadow: inset 0 0 0 1px rgba(27,23,64,.06);
-  flex-shrink: 0;
-}
-.stepper button {
-  width: 36px; height: 36px;
-  border-radius: 50%; border: none;
-  background: var(--grad-warm); color: white;
-  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 20px;
-  cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center;
-  line-height: 1;
-  transition: transform .12s, filter .15s;
-  -webkit-tap-highlight-color: transparent;
-}
-.stepper button:active { transform: scale(.92); }
-.stepper button:hover { filter: brightness(1.05); }
-.stepper #count-display {
-  min-width: 28px; text-align: center;
-  font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 20px;
-}
-
 .appt-cta {
   width: 100%;
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
