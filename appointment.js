@@ -2,7 +2,7 @@
 
 const COUNTER_NS = 'almadina-polyclinic';
 const STORAGE_KEY = 'almadina_appt';
-const MAX_PER_FAMILY = 6;
+const MAX_PER_FAMILY = 3;
 const HIT_URL = (key) => `https://abacus.jasoncameron.dev/hit/${COUNTER_NS}/${key}`;
 const GET_URL = (key) => `https://abacus.jasoncameron.dev/get/${COUNTER_NS}/${key}`;
 
@@ -91,6 +91,10 @@ function renderTicket(numbers) {
 
   $('ticket-date').textContent = prettyDate();
   $('ticket-hours').textContent = todayHours();
+
+  // Hide "Add another patient" once we've hit the per-device limit.
+  $('add-another-btn').classList.toggle('hidden', numbers.length >= MAX_PER_FAMILY);
+
   show('ticket');
 }
 
