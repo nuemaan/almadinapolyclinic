@@ -62,7 +62,7 @@ The staff key and token secret live in `queue-token.js` — change them there if
 ### How it works
 
 - **Counter:** uses [abacus.jasoncameron.dev](https://abacus.jasoncameron.dev) — a free public counter API, no setup needed.
-- **Daily reset:** the counter key includes today's date (`YYYY-MM-DD`), so the queue automatically starts at `#1` every morning.
+- **Session reset:** the counter key includes today's date and an `am`/`pm` suffix (`YYYY-MM-DD-am` before 3 PM, `YYYY-MM-DD-pm` after), so the queue automatically starts at `#1` for the morning session and again at `#1` for the evening session.
 - **Per-device limit:** once a phone has a number for the day, refreshing the appointment page shows the same number (stored in `localStorage`) — patients can't accidentally take multiple numbers by refreshing.
 
 ### Custom QR target

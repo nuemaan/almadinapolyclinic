@@ -21,12 +21,15 @@ function show(name) {
   Object.entries(states).forEach(([k, el]) => el.classList.toggle('hidden', k !== name));
 }
 
-function todayKey() {
+// Counter key — rotates at midnight AND at 3 PM so the morning and
+// evening clinic sessions each start fresh at #1.
+function sessionKey() {
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  const session = d.getHours() < 15 ? 'am' : 'pm';
+  return `${y}-${m}-${day}-${session}`;
 }
 
 function prettyDate() {
@@ -45,23 +48,22 @@ function ordinal(n) {
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-// --- Storage: array of numbers issued today on this device ---
+// --- Storage: array of numbers issued in the current session on this device ---
 function loadSaved() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    if (!data || data.date !== todayKey()) return null;
-    // Migrate old single-number format → array
+    if (!data || data.session !== sessionKey()) return null;
     if (Array.isArray(data.numbers) && data.numbers.length) return data;
-    if (Number.isInteger(data.number)) return { date: data.date, numbers: [data.number] };
+    if (Number.isInteger(data.number)) return { session: data.session, numbers: [data.number] };
     return null;
   } catch { return null; }
 }
 
 function save(numbers) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: todayKey(), numbers }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ session: sessionKey(), numbers }));
   } catch {}
 }
 
@@ -112,7 +114,7 @@ async function fetchJSON(url, { timeout = 8000 } = {}) {
 }
 
 async function incrementOnce() {
-  const data = await fetchJSON(HIT_URL(todayKey()));
+  const data = await fetchJSON(HIT_URL(sessionKey()));
   if (typeof data.value !== 'number') throw new Error('Bad response');
   return data.value;
 }
@@ -156,7 +158,7 @@ async function showLatestCount() {
   try {
     let value = 0;
     try {
-      const data = await fetchJSON(GET_URL(todayKey()));
+      const data = await fetchJSON(GET_URL(sessionKey()));
       if (typeof data.value === 'number') value = data.value;
     } catch (e) {
       if (!String(e).includes('HTTP')) throw e;

@@ -8,9 +8,15 @@ const POLL_MS = 5000;
 
 const $ = (id) => document.getElementById(id);
 
-function todayKey() {
+// Counter key — rotates at midnight AND at 3 PM so the morning and
+// evening clinic sessions each start fresh at #1.
+function sessionKey() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const session = d.getHours() < 15 ? 'am' : 'pm';
+  return `${y}-${m}-${day}-${session}`;
 }
 
 function prettyDate() {
@@ -55,7 +61,7 @@ let lastValue = null;
 
 async function pollCounter() {
   try {
-    const res = await fetch(GET_URL(todayKey()), { cache: 'no-store' });
+    const res = await fetch(GET_URL(sessionKey()), { cache: 'no-store' });
     let value = 0;
     if (res.ok) {
       const data = await res.json();
@@ -72,11 +78,11 @@ function updateLive(value) {
   const sub = $('d-live-sub');
   el.textContent = value > 0 ? '#' + value : '#0';
   if (value === 0) {
-    sub.textContent = 'Be the first patient of the day 👋';
+    sub.textContent = 'Be the first patient of the session 👋';
   } else if (value === 1) {
-    sub.textContent = '1 number issued so far today';
+    sub.textContent = '1 number issued so far this session';
   } else {
-    sub.textContent = `${value} numbers issued so far today`;
+    sub.textContent = `${value} numbers issued so far this session`;
   }
   if (lastValue !== null && value > lastValue) {
     el.classList.remove('bump');
