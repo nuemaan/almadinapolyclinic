@@ -8,7 +8,7 @@ Website for **Al Madina Polyclinic & Laboratory**, a pediatric clinic in Beehama
 
 - **Address:** 1st Floor, Al-Rahat Chinar Shopping Complex, Beehama, Ganderbal — 191201
 - **Phone:** +91 95965 79443
-- **Hours:** Mon–Sat · 9:30–10:30 AM & 4:30–6:30 PM · Sun · 10:00 AM – 1:30 PM
+- **Hours:** Mon–Sat · 9:00–10:00 AM & 5:30–8:30 PM · Sun · 10:00 AM – 1:30 PM & 6:30–8:00 PM
 - Appointments are taken on-site.
 
 ## Stack

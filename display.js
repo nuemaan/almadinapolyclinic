@@ -27,8 +27,8 @@ function prettyDate() {
 
 function todayHours() {
   const day = new Date().getDay();
-  if (day === 0) return '🕐 Sun · 10:00 AM – 1:30 PM';
-  return '🕐 Mon–Sat · 9:30–10:30 AM & 4:30–6:30 PM';
+  if (day === 0) return '🕐 Sun · 10:00 AM – 1:30 PM & 6:30–8:00 PM';
+  return '🕐 Mon–Sat · 9:00–10:00 AM & 5:30–8:30 PM';
 }
 
 // The page that patients land on after scanning. Defaults to /appointment.html
