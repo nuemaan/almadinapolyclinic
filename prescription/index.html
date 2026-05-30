@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prescription Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #0d9488;
+    --teal-dark: #0f766e;
+    --teal-soft: #ccfbf1;
+    --teal-bg: #f0fdfa;
+    --coral: #f97316;
+    --coral-soft: #ffedd5;
+    --cream: #fffaf0;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    background: var(--cream);
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(13,148,136,0.08), transparent 40%),
+      radial-gradient(circle at 90% 100%, rgba(249,115,22,0.08), transparent 40%);
+    background-attachment: fixed;
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  header {
+    background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+    color: #fff;
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 20px rgba(13,148,136,0.18);
+  }
+  header h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.2px; }
+  .tabs { display: flex; gap: 6px; }
+  .tab-btn {
+    background: rgba(255,255,255,0.18);
+    color: #fff;
+    border: none;
+    padding: 9px 22px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .tab-btn:hover { background: rgba(255,255,255,0.28); }
+  .tab-btn.active { background: #fff; color: var(--teal-dark); }
+
+  main { padding: 28px 24px; max-width: 1200px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 2px 12px rgba(13,148,136,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    margin-bottom: 18px;
+    border: 1px solid rgba(13,148,136,0.08);
+  }
+  .card h2 {
+    margin: 0 0 18px;
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--teal-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card h2::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: var(--coral);
+    border-radius: 2px;
+  }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    transition: all 0.15s;
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(13,148,136,0.12);
+  }
+
+  .med-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1.2fr 1fr 0.8fr 1.5fr auto;
+    gap: 10px;
+    align-items: end;
+    padding: 12px;
+    background: var(--teal-bg);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    border: 1px solid var(--teal-soft);
+  }
+  .med-row label { font-size: 10px; }
+
+  button.primary {
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    color: #fff;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(13,148,136,0.3);
+    transition: all 0.15s;
+  }
+  button.primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(13,148,136,0.4); }
+  button.secondary {
+    background: #fff;
+    color: var(--teal-dark);
+    border: 1.5px solid var(--teal);
+    padding: 9px 18px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  button.secondary:hover { background: var(--teal-bg); }
+  button.danger {
+    background: var(--coral-soft);
+    color: #c2410c;
+    border: none;
+    padding: 7px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  button.danger:hover { background: #fed7aa; }
+
+  .actions { display: flex; gap: 10px; margin-top: 10px; }
+
+  /* Pharmacist layout */
+  .pharm-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 18px;
+  }
+  .rx-list {
+    background: #fff;
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 2px 12px rgba(13,148,136,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    border: 1px solid rgba(13,148,136,0.08);
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .rx-item {
+    padding: 13px;
+    border-radius: 12px;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    margin-bottom: 8px;
+    transition: all 0.15s;
+  }
+  .rx-item:hover { background: var(--teal-bg); }
+  .rx-item.selected { background: var(--teal-bg); border-color: var(--teal); }
+  .rx-item .name { font-weight: 700; font-size: 14px; color: var(--ink); }
+  .rx-item .meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  .empty { text-align: center; color: #9ca3af; padding: 40px 20px; font-size: 14px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 11px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+  th { font-weight: 800; color: var(--teal-dark); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; background: var(--teal-bg); }
+  tr:last-child td { border-bottom: none; }
+
+  .toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--teal);
+    color: #fff;
+    padding: 12px 22px;
+    border-radius: 999px;
+    box-shadow: 0 6px 20px rgba(13,148,136,0.35);
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.2s;
+    pointer-events: none;
+    z-index: 1000;
+    font-weight: 700;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .info-row { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 18px; padding: 14px 16px; background: var(--teal-bg); border-radius: 12px; }
+  .info-row > div { font-size: 14px; }
+  .info-row .label-sm { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+  .info-row .val { font-weight: 700; color: var(--ink); margin-top: 2px; }
+
+  /* Print styles */
+  @media print {
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      padding: 30px;
+      background: #fff;
+    }
+    #print-area .no-print { display: none !important; }
+    .toast { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Al Madina Polyclinic &amp; Laboratory</h1>
+    <div style="font-size: 12px; opacity: 0.85; margin-top: 2px;">Beehama, Ganderbal, Kashmir · +91 95965 79443 · almadinapolyclinic.com</div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="doctor">Doctor</button>
+    <button class="tab-btn" data-tab="pharmacist">Pharmacist</button>
+    <button class="tab-btn" data-tab="lab">Lab</button>
+    <button class="tab-btn" data-tab="patient">Patient</button>
+  </div>
+</header>
+
+<main>
+  <!-- DOCTOR PANEL -->
+  <section id="panel-doctor" class="panel active">
+    <div class="card">
+      <h2>Doctor Profile <span style="font-weight: 400; color: #6b7280; font-size: 12px;">(saved automatically — set once)</span></h2>
+      <div class="grid-2">
+        <div>
+          <label>Select Doctor</label>
+          <select id="d-select">
+            <option value="">-- choose --</option>
+            <option value="Dr. Rayis Ahmad Rather|">Dr. Rayis Ahmad Rather</option>
+            <option value="Dr. Ajaz Ahmad Suhaff|">Dr. Ajaz Ahmad Suhaff</option>
+            <option value="Dr. Mir Laieq Ishtiyaq|">Dr. Mir Laieq Ishtiyaq</option>
+            <option value="Dr. Ajaz Ahmad Bhat|">Dr. Ajaz Ahmad Bhat</option>
+            <option value="__custom__">Other / Custom...</option>
+          </select>
+        </div>
+        <div id="custom-doctor-wrap" style="display: none;">
+          <label>Doctor Name</label>
+          <input id="d-custom" type="text" placeholder="Dr. ..." />
+        </div>
+      </div>
+      <div id="d-current" style="margin-top: 12px; font-size: 13px; color: var(--teal-dark); font-weight: 700;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Patient Details</h2>
+      <div class="grid">
+        <div><label>Patient Name</label><input id="p-name" type="text" placeholder="Full name" /></div>
+        <div><label>Age</label><input id="p-age" type="number" min="0" placeholder="Years" /></div>
+        <div>
+          <label>Gender</label>
+          <select id="p-gender">
+            <option value="">Select</option>
+            <option>Male</option>
+            <option>Female</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top: 12px;">
+        <label>Notes / Diagnosis</label>
+        <textarea id="d-notes" placeholder="Symptoms, diagnosis, advice..."></textarea>
+      </div>
+      <div style="margin-top: 8px; font-size: 12px; color: #6b7280;">Date will be set automatically to today.</div>
+    </div>
+
+    <div class="card">
+      <h2>Medicines</h2>
+      <div id="med-rows"></div>
+      <div class="actions">
+        <button class="secondary" id="add-med-btn">+ Add Medicine</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="save-rx-btn">Save Prescription</button>
+      <button class="secondary" id="reset-rx-btn">Reset Form</button>
+    </div>
+  </section>
+
+  <!-- PHARMACIST PANEL -->
+  <section id="panel-pharmacist" class="panel">
+    <div class="pharm-layout">
+      <div class="rx-list" id="rx-list"></div>
+      <div id="rx-detail"></div>
+    </div>
+  </section>
+
+  <!-- LAB PANEL -->
+  <section id="panel-lab" class="panel">
+    <div class="card">
+      <h2>Upload Test Report</h2>
+      <div class="grid-2">
+        <div><label>Patient Name</label><input id="lab-patient" type="text" placeholder="Full name" /></div>
+        <div><label>Test Name</label><input id="lab-test" type="text" placeholder="e.g. CBC, Blood Sugar" /></div>
+      </div>
+      <div style="margin-top: 14px;">
+        <label>Test File(s) <span style="text-transform: none; font-weight: 500; color: var(--muted);">PDF / image / any file · hold Cmd/Ctrl to pick several at once</span></label>
+        <input id="lab-files" type="file" multiple style="display: none;" />
+        <button type="button" class="secondary" id="lab-pick-btn">+ Add File(s)</button>
+        <div id="lab-staged" style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;"></div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="lab-upload-btn">Upload &amp; Generate Code</button>
+      </div>
+      <div style="margin-top: 10px; font-size: 12px; color: var(--muted);">Test files expire and are auto-deleted 3 days after upload.</div>
+    </div>
+
+    <div class="card">
+      <h2>Recent Uploads</h2>
+      <div id="lab-list"></div>
+    </div>
+  </section>
+
+  <!-- PATIENT PANEL -->
+  <section id="panel-patient" class="panel">
+    <div class="card" style="max-width: 520px; margin: 20px auto;">
+      <h2>Download Your Test Report</h2>
+      <p style="font-size: 14px; color: var(--muted); margin: 0 0 16px;">Enter the code given to you by the lab to view and download your test report.</p>
+      <label>Access Code</label>
+      <input id="patient-code" type="text" placeholder="e.g. A3F9K2" maxlength="10" style="text-transform: uppercase; font-size: 18px; letter-spacing: 4px; font-weight: 700; text-align: center;" />
+      <div class="actions" style="justify-content: center;">
+        <button class="primary" id="patient-fetch-btn">Fetch Report</button>
+      </div>
+      <div id="patient-result" style="margin-top: 18px;"></div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast">Saved</div>
+
+<script>
+  const STORAGE_KEY = 'prescriptions';
+  const DOCTOR_KEY = 'doctorProfile';
+  const LAB_KEY = 'labTests';
+  const EXPIRY_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+  const CLINIC = {
+    name: 'Al Madina Polyclinic & Laboratory',
+    address: '1st Floor, Al-Rahat Chinar Shopping Complex, Beehama, Ganderbal, Kashmir',
+    phone: '+91 95965 79443',
+    website: 'almadinapolyclinic.com',
+  };
+
+  /* ---------- storage helpers ---------- */
+  const load = () => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+  };
+  const save = (data) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+  /* ---------- toast ---------- */
+  const toast = (msg, color = '#10b981') => {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = color;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+  };
+
+  /* ---------- tabs ---------- */
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'pharmacist') renderPharmacist();
+      if (btn.dataset.tab === 'lab') renderLab();
+      if (btn.dataset.tab === 'patient') {
+        document.getElementById('patient-code').value = '';
+        document.getElementById('patient-result').innerHTML = '';
+      }
+    });
+  });
+
+  /* ---------- DOCTOR ---------- */
+  const medRowsEl = document.getElementById('med-rows');
+
+  function makeMedRow(med = {}) {
+    const div = document.createElement('div');
+    div.className = 'med-row';
+    div.innerHTML = `
+      <div><label>Medicine</label><input class="m-name" placeholder="e.g. Paracetamol" value="${med.name || ''}"></div>
+      <div><label>Dosage</label><input class="m-dosage" placeholder="500mg" value="${med.dosage || ''}"></div>
+      <div><label>Frequency</label><input class="m-freq" placeholder="Twice daily" value="${med.frequency || ''}"></div>
+      <div><label>Duration</label><input class="m-dur" placeholder="5 days" value="${med.duration || ''}"></div>
+      <div><label>Qty</label><input class="m-qty" type="number" min="0" placeholder="10" value="${med.quantity || ''}"></div>
+      <div><label>Instructions</label><input class="m-inst" placeholder="After food" value="${med.instructions || ''}"></div>
+      <div><button class="danger" type="button">Remove</button></div>
+    `;
+    div.querySelector('button.danger').addEventListener('click', () => div.remove());
+    return div;
+  }
+
+  document.getElementById('add-med-btn').addEventListener('click', () => {
+    medRowsEl.appendChild(makeMedRow());
+  });
+
+  document.getElementById('reset-rx-btn').addEventListener('click', resetForm);
+
+  function resetForm() {
+    ['p-name','p-age','p-gender','d-notes'].forEach(id => document.getElementById(id).value = '');
+    medRowsEl.innerHTML = '';
+    medRowsEl.appendChild(makeMedRow());
+  }
+
+  /* ---------- Doctor profile (persisted once) ---------- */
+  const dSelect = document.getElementById('d-select');
+  const dCustomWrap = document.getElementById('custom-doctor-wrap');
+  const dCustom = document.getElementById('d-custom');
+  const dCurrent = document.getElementById('d-current');
+
+  function loadDoctor() {
+    try { return JSON.parse(localStorage.getItem(DOCTOR_KEY)) || null; } catch { return null; }
+  }
+  function saveDoctor(profile) {
+    if (profile) localStorage.setItem(DOCTOR_KEY, JSON.stringify(profile));
+    else localStorage.removeItem(DOCTOR_KEY);
+    renderCurrentDoctor();
+  }
+  function renderCurrentDoctor() {
+    const p = loadDoctor();
+    dCurrent.textContent = p ? `Current: ${p.name}` : 'No doctor selected yet.';
+  }
+
+  function initDoctorProfile() {
+    const p = loadDoctor();
+    if (p) {
+      const match = Array.from(dSelect.options).find(o => o.value.startsWith(p.name + '|'));
+      if (match) {
+        dSelect.value = match.value;
+        dCustomWrap.style.display = 'none';
+      } else {
+        dSelect.value = '__custom__';
+        dCustomWrap.style.display = 'block';
+        dCustom.value = p.name;
+      }
+    }
+    renderCurrentDoctor();
+  }
+
+  dSelect.addEventListener('change', () => {
+    const v = dSelect.value;
+    if (v === '__custom__') {
+      dCustomWrap.style.display = 'block';
+      dCustom.focus();
+      return;
+    }
+    dCustomWrap.style.display = 'none';
+    if (!v) { saveDoctor(null); return; }
+    const [name, credentials] = v.split('|');
+    saveDoctor({ name, credentials });
+  });
+
+  dCustom.addEventListener('blur', () => {
+    const name = dCustom.value.trim();
+    if (name) saveDoctor({ name, credentials: '' });
+  });
+
+  document.getElementById('save-rx-btn').addEventListener('click', () => {
+    const name = document.getElementById('p-name').value.trim();
+    if (!name) { toast('Patient name is required', '#ef4444'); return; }
+
+    const doctor = loadDoctor();
+    if (!doctor) { toast('Select a doctor in Doctor Profile first', '#ef4444'); return; }
+
+    const meds = Array.from(medRowsEl.querySelectorAll('.med-row')).map(row => ({
+      id: uid(),
+      name: row.querySelector('.m-name').value.trim(),
+      dosage: row.querySelector('.m-dosage').value.trim(),
+      frequency: row.querySelector('.m-freq').value.trim(),
+      duration: row.querySelector('.m-dur').value.trim(),
+      quantity: row.querySelector('.m-qty').value.trim(),
+      instructions: row.querySelector('.m-inst').value.trim(),
+    })).filter(m => m.name);
+
+    if (meds.length === 0) { toast('Add at least one medicine', '#ef4444'); return; }
+
+    const today = new Date();
+    const rx = {
+      id: uid(),
+      createdAt: today.toISOString(),
+      patient: {
+        name,
+        age: document.getElementById('p-age').value.trim(),
+        gender: document.getElementById('p-gender').value,
+      },
+      doctorName: doctor.name,
+      doctorCredentials: doctor.credentials || '',
+      date: today.toISOString().slice(0, 10),
+      notes: document.getElementById('d-notes').value.trim(),
+      medicines: meds,
+    };
+
+    const all = load();
+    all.push(rx);
+    save(all);
+    toast('Prescription saved');
+    resetForm();
+  });
+
+  /* ---------- PHARMACIST ---------- */
+  let selectedId = null;
+
+  function renderPharmacist() {
+    const all = load().slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const listEl = document.getElementById('rx-list');
+    const detailEl = document.getElementById('rx-detail');
+
+    if (all.length === 0) {
+      listEl.innerHTML = '<div class="empty">No prescriptions yet</div>';
+      detailEl.innerHTML = '<div class="card"><div class="empty">Saved prescriptions will appear here</div></div>';
+      return;
+    }
+
+    listEl.innerHTML = all.map(rx => `
+      <div class="rx-item ${rx.id === selectedId ? 'selected' : ''}" data-id="${rx.id}" style="display: flex; justify-content: space-between; align-items: start; gap: 8px;">
+        <div style="flex: 1; min-width: 0;">
+          <div class="name">${escapeHtml(rx.patient.name)}</div>
+          <div class="meta">${formatDate(rx.date || rx.createdAt)} • ${rx.medicines.length} medicine${rx.medicines.length === 1 ? '' : 's'}</div>
+        </div>
+        <button class="danger rx-del" data-id="${rx.id}" title="Delete prescription" style="flex-shrink: 0;">×</button>
+      </div>
+    `).join('');
+
+    listEl.querySelectorAll('.rx-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        if (e.target.classList.contains('rx-del')) return;
+        selectedId = item.dataset.id;
+        renderPharmacist();
+      });
+    });
+    listEl.querySelectorAll('.rx-del').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deletePrescription(btn.dataset.id);
+      });
+    });
+
+    if (!selectedId || !all.find(r => r.id === selectedId)) {
+      selectedId = all[0].id;
+    }
+    renderDetail(selectedId);
+  }
+
+  function renderDetail(id) {
+    const all = load();
+    const rx = all.find(r => r.id === id);
+    const detailEl = document.getElementById('rx-detail');
+    if (!rx) {
+      detailEl.innerHTML = '<div class="card"><div class="empty">Select a prescription</div></div>';
+      return;
+    }
+
+    detailEl.innerHTML = `
+      <div id="print-area">
+        <div class="card">
+          <div class="clinic-header" style="text-align: center; padding: 4px 0 16px; margin-bottom: 18px; border-bottom: 2px dashed var(--teal); position: relative;">
+            <div style="font-size: 24px; font-weight: 800; color: var(--teal-dark); letter-spacing: 0.3px;">${escapeHtml(CLINIC.name)}</div>
+            <div style="font-size: 12px; color: #374151; margin-top: 6px;">${escapeHtml(CLINIC.address)}</div>
+            <div style="font-size: 12px; color: var(--coral); font-weight: 700; margin-top: 2px;">Phone: ${escapeHtml(CLINIC.phone)} · ${escapeHtml(CLINIC.website)}</div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+            <h2 style="margin: 0;">Prescription</h2>
+            <div class="no-print actions" style="margin: 0;">
+              <button class="secondary" id="print-btn">Print</button>
+              <button class="primary" id="csv-btn">Save for ERP (CSV)</button>
+            </div>
+          </div>
+          <div class="info-row">
+            <div><div class="label-sm">Patient</div><div class="val">${escapeHtml(rx.patient.name)}</div></div>
+            <div><div class="label-sm">Age / Gender</div><div class="val">${escapeHtml(rx.patient.age || '-')} / ${escapeHtml(rx.patient.gender || '-')}</div></div>
+            <div><div class="label-sm">Doctor</div><div class="val">${escapeHtml(rx.doctorName || '-')}</div></div>
+            <div><div class="label-sm">Date</div><div class="val">${formatDate(rx.date || rx.createdAt)}</div></div>
+          </div>
+          ${rx.notes ? `<div style="margin-bottom: 16px;"><div class="label-sm">Notes</div><div>${escapeHtml(rx.notes)}</div></div>` : ''}
+
+          ${rx.medicines.length === 0 ? '<div class="empty">All medicines removed</div>' : `
+          <table>
+            <thead>
+              <tr>
+                <th>Medicine</th><th>Dosage</th><th>Frequency</th><th>Duration</th><th>Qty</th><th>Instructions</th><th class="no-print"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rx.medicines.map(m => `
+                <tr>
+                  <td>${escapeHtml(m.name)}</td>
+                  <td>${escapeHtml(m.dosage || '-')}</td>
+                  <td>${escapeHtml(m.frequency || '-')}</td>
+                  <td>${escapeHtml(m.duration || '-')}</td>
+                  <td>${escapeHtml(m.quantity || '-')}</td>
+                  <td>${escapeHtml(m.instructions || '-')}</td>
+                  <td class="no-print"><button class="danger" data-med="${m.id}">Delete</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>`}
+        </div>
+      </div>
+    `;
+
+    detailEl.querySelectorAll('button.danger').forEach(btn => {
+      btn.addEventListener('click', () => deleteMedicine(rx.id, btn.dataset.med));
+    });
+    const printBtn = document.getElementById('print-btn');
+    if (printBtn) printBtn.addEventListener('click', () => window.print());
+    const csvBtn = document.getElementById('csv-btn');
+    if (csvBtn) csvBtn.addEventListener('click', () => exportCsv(rx));
+  }
+
+  function deletePrescription(rxId) {
+    const all = load();
+    const rx = all.find(r => r.id === rxId);
+    if (!rx) return;
+    if (!confirm(`Delete the entire prescription for ${rx.patient.name}? This cannot be undone.`)) return;
+    save(all.filter(r => r.id !== rxId));
+    if (selectedId === rxId) selectedId = null;
+    toast('Prescription deleted');
+    renderPharmacist();
+  }
+
+  function deleteMedicine(rxId, medId) {
+    if (!confirm('Remove this medicine from the prescription?')) return;
+    const all = load();
+    const rx = all.find(r => r.id === rxId);
+    if (!rx) return;
+    rx.medicines = rx.medicines.filter(m => m.id !== medId);
+    save(all);
+    toast('Medicine removed');
+    renderPharmacist();
+  }
+
+  /* ---------- CSV export ---------- */
+  function exportCsv(rx) {
+    if (rx.medicines.length === 0) { toast('No medicines to export', '#ef4444'); return; }
+    const headers = ['prescription_id','date','patient_name','medicine_name','dosage','frequency','duration','quantity','instructions'];
+    const rows = rx.medicines.map(m => [
+      rx.id,
+      rx.date || rx.createdAt.slice(0, 10),
+      rx.patient.name,
+      m.name,
+      m.dosage,
+      m.frequency,
+      m.duration,
+      m.quantity,
+      m.instructions,
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `prescription-${rx.id}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('CSV downloaded');
+  }
+
+  function csvCell(v) {
+    const s = (v == null ? '' : String(v));
+    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  /* ---------- utils ---------- */
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function formatDate(s) {
+    if (!s) return '-';
+    const d = new Date(s);
+    if (isNaN(d)) return s;
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  /* cross-tab sync */
+  window.addEventListener('storage', (e) => {
+    if (e.key === STORAGE_KEY && document.getElementById('panel-pharmacist').classList.contains('active')) {
+      renderPharmacist();
+    }
+  });
+
+  /* ---------- LAB ---------- */
+  function loadLab() {
+    let data;
+    try { data = JSON.parse(localStorage.getItem(LAB_KEY)) || []; } catch { data = []; }
+    const now = Date.now();
+    const fresh = data.filter(t => t.expiresAt > now);
+    if (fresh.length !== data.length) saveLab(fresh);
+    return fresh;
+  }
+  function saveLab(data) { localStorage.setItem(LAB_KEY, JSON.stringify(data)); }
+
+  function genCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const existing = new Set(loadLab().map(t => t.code));
+    for (let i = 0; i < 50; i++) {
+      let c = '';
+      for (let j = 0; j < 6; j++) c += chars[Math.floor(Math.random() * chars.length)];
+      if (!existing.has(c)) return c;
+    }
+    return 'X' + Date.now().toString(36).toUpperCase().slice(-5);
+  }
+
+  function readFileAsDataURL(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  /* Staged files accumulator (so multiple separate picks add up) */
+  let stagedFiles = [];
+  const stagedEl = document.getElementById('lab-staged');
+  const filesInput = document.getElementById('lab-files');
+
+  function renderStaged() {
+    if (stagedFiles.length === 0) { stagedEl.innerHTML = ''; return; }
+    stagedEl.innerHTML = stagedFiles.map((f, i) => `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--teal-bg); border: 1px solid var(--teal-soft); border-radius: 10px; font-size: 13px;">
+        <span>📄 ${escapeHtml(f.name)} <span style="color: var(--muted);">(${formatBytes(f.size)})</span></span>
+        <button type="button" class="danger" data-i="${i}">Remove</button>
+      </div>
+    `).join('');
+    stagedEl.querySelectorAll('button.danger').forEach(b => {
+      b.addEventListener('click', () => {
+        stagedFiles.splice(parseInt(b.dataset.i, 10), 1);
+        renderStaged();
+      });
+    });
+  }
+
+  document.getElementById('lab-pick-btn').addEventListener('click', () => filesInput.click());
+  filesInput.addEventListener('change', () => {
+    const picked = Array.from(filesInput.files || []);
+    picked.forEach(f => {
+      if (!stagedFiles.some(s => s.name === f.name && s.size === f.size)) stagedFiles.push(f);
+    });
+    filesInput.value = ''; // reset so picking the same file again works
+    renderStaged();
+  });
+
+  document.getElementById('lab-upload-btn').addEventListener('click', async () => {
+    const patient = document.getElementById('lab-patient').value.trim();
+    const testName = document.getElementById('lab-test').value.trim();
+
+    if (!patient) { toast('Patient name required', '#ef4444'); return; }
+    if (!testName) { toast('Test name required', '#ef4444'); return; }
+    if (stagedFiles.length === 0) { toast('Add at least one file', '#ef4444'); return; }
+
+    const totalSize = stagedFiles.reduce((s, f) => s + f.size, 0);
+    if (totalSize > 4 * 1024 * 1024) {
+      if (!confirm('Files are larger than ~4MB. Browser storage may reject. Continue?')) return;
+    }
+
+    const fileData = [];
+    for (const f of stagedFiles) {
+      try {
+        fileData.push({ name: f.name, type: f.type, size: f.size, dataUrl: await readFileAsDataURL(f) });
+      } catch {
+        toast('Could not read ' + f.name, '#ef4444');
+        return;
+      }
+    }
+
+    const now = Date.now();
+    const entry = {
+      code: genCode(),
+      patient,
+      testName,
+      uploadedAt: now,
+      expiresAt: now + EXPIRY_MS,
+      files: fileData,
+    };
+
+    const all = loadLab();
+    all.push(entry);
+    try {
+      saveLab(all);
+    } catch (e) {
+      toast('Storage full — try smaller files', '#ef4444');
+      return;
+    }
+
+    document.getElementById('lab-patient').value = '';
+    document.getElementById('lab-test').value = '';
+    stagedFiles = [];
+    renderStaged();
+    toast('Uploaded · code ' + entry.code);
+    renderLab(entry.code);
+  });
+
+  function renderLab(highlightCode) {
+    const list = document.getElementById('lab-list');
+    const all = loadLab().slice().sort((a, b) => b.uploadedAt - a.uploadedAt);
+    if (all.length === 0) {
+      list.innerHTML = '<div class="empty">No tests uploaded yet.</div>';
+      return;
+    }
+    list.innerHTML = `
+      <table>
+        <thead><tr><th>Code</th><th>Patient</th><th>Test</th><th>Uploaded</th><th>Expires</th><th>Files</th><th></th></tr></thead>
+        <tbody>
+          ${all.map(t => `
+            <tr ${t.code === highlightCode ? 'style="background: var(--coral-soft);"' : ''}>
+              <td><span style="font-family: monospace; font-weight: 800; font-size: 15px; letter-spacing: 1.5px; color: var(--teal-dark);">${t.code}</span></td>
+              <td>${escapeHtml(t.patient)}</td>
+              <td>${escapeHtml(t.testName)}</td>
+              <td>${formatDateTime(t.uploadedAt)}</td>
+              <td>${expiryLabel(t.expiresAt)}</td>
+              <td>${t.files.length}</td>
+              <td><button class="danger" data-code="${t.code}">Delete</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    list.querySelectorAll('button.danger').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!confirm('Delete this test upload? Patient will no longer be able to download.')) return;
+        saveLab(loadLab().filter(t => t.code !== btn.dataset.code));
+        toast('Deleted');
+        renderLab();
+      });
+    });
+  }
+
+  function expiryLabel(ts) {
+    const ms = ts - Date.now();
+    if (ms <= 0) return 'Expired';
+    const hrs = Math.floor(ms / (60 * 60 * 1000));
+    if (hrs >= 24) return `${Math.floor(hrs / 24)}d ${hrs % 24}h left`;
+    return `${hrs}h left`;
+  }
+
+  function formatDateTime(ts) {
+    return new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  }
+
+  /* ---------- PATIENT DOWNLOAD ---------- */
+  document.getElementById('patient-fetch-btn').addEventListener('click', () => {
+    const codeInput = document.getElementById('patient-code');
+    const code = codeInput.value.trim().toUpperCase();
+    const resultEl = document.getElementById('patient-result');
+    if (!code) { toast('Enter a code', '#ef4444'); return; }
+    const entry = loadLab().find(t => t.code === code);
+    if (!entry) {
+      resultEl.innerHTML = `<div style="padding: 14px; background: var(--coral-soft); border-radius: 12px; color: #c2410c; font-weight: 700; text-align: center;">Invalid or expired code. Please contact the lab.</div>`;
+      return;
+    }
+    resultEl.innerHTML = `
+      <div style="padding: 16px; background: var(--teal-bg); border: 1px solid var(--teal-soft); border-radius: 12px;">
+        <div style="font-size: 12px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Patient</div>
+        <div style="font-weight: 700; margin-bottom: 8px;">${escapeHtml(entry.patient)}</div>
+        <div style="font-size: 12px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Test</div>
+        <div style="font-weight: 700; margin-bottom: 8px;">${escapeHtml(entry.testName)}</div>
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">Uploaded ${formatDateTime(entry.uploadedAt)} · ${expiryLabel(entry.expiresAt)}</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${entry.files.map((f, i) => `
+            <a href="${f.dataUrl}" download="${escapeHtml(f.name)}" class="secondary" style="text-decoration: none; padding: 10px 16px; display: inline-block; text-align: center;">
+              ⬇ Download ${escapeHtml(f.name)} <span style="color: var(--muted); font-weight: 500;">(${formatBytes(f.size)})</span>
+            </a>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById('patient-code').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('patient-fetch-btn').click();
+  });
+
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+    return (b / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  /* init */
+  initDoctorProfile();
+  resetForm();
+  loadLab(); // triggers auto-prune of expired
+</script>
+</body>
+</html>
