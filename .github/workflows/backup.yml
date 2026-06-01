@@ -45,7 +45,8 @@ jobs:
           if [ -z "${BACKUP_PASSPHRASE:-}" ]; then echo "::error::BACKUP_PASSPHRASE secret is not set"; exit 1; fi
           ts=$(date -u +%Y%m%d-%H%M%SZ)
           mkdir -p out
-          pg_dump "$DATABASE_URL" --no-owner --no-privileges -Fc -f "almadina-$ts.dump"
+          # Use the v17 binary explicitly (the runner ships v16 on PATH).
+          /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" --no-owner --no-privileges -Fc -f "almadina-$ts.dump"
           openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
             -in "almadina-$ts.dump" -out "out/almadina-$ts.dump.enc" -pass env:BACKUP_PASSPHRASE
           rm -f "almadina-$ts.dump"
