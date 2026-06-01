@@ -213,7 +213,6 @@
     <button class="tab-btn active" data-tab="doctor">Doctor</button>
     <button class="tab-btn" data-tab="pharmacist">Pharmacist</button>
     <button class="tab-btn" data-tab="lab">Lab</button>
-    <button class="tab-btn" data-tab="patient">Patient</button>
   </div>
   <div class="whoami"><span id="who">—</span><button class="logout-btn" id="logout-btn">Logout</button></div>
 </header>
@@ -264,17 +263,6 @@
     <div class="card"><h2>Recent Uploads</h2><div id="lab-list"></div></div>
   </section>
 
-  <!-- PATIENT PANEL — lab report download by code -->
-  <section id="panel-patient" class="panel">
-    <div class="card" style="max-width: 520px; margin: 20px auto;">
-      <h2>Download Test Report</h2>
-      <p style="font-size: 14px; color: var(--muted); margin: 0 0 16px;">Enter the code given by the lab to view and download the test report.</p>
-      <label>Access Code</label>
-      <input id="patient-code" type="text" placeholder="e.g. A3F9K2" maxlength="10" style="text-transform: uppercase; font-size: 18px; letter-spacing: 4px; font-weight: 700; text-align: center;" />
-      <div class="actions" style="justify-content: center;"><button class="primary" id="patient-fetch-btn">Fetch Report</button></div>
-      <div id="patient-result" style="margin-top: 18px;"></div>
-    </div>
-  </section>
 </main>
 </div>
 
@@ -297,8 +285,8 @@
 
   const TABS_BY_ROLE = {
     doctor:    ['doctor', 'pharmacist'],
-    reception: ['doctor', 'pharmacist', 'lab', 'patient'],
-    lab:       ['lab', 'patient'],
+    reception: ['doctor', 'pharmacist', 'lab'],
+    lab:       ['lab'],
   };
 
   let staffProfile = null;   // { role, name }
@@ -368,7 +356,6 @@
     if (tab === 'doctor') loadQueue();
     if (tab === 'pharmacist') loadPrescriptions();
     if (tab === 'lab') renderLab();
-    if (tab === 'patient') { $('patient-code').value = ''; $('patient-result').innerHTML = ''; }
   }
   document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => activateTab(b.dataset.tab)));
 
@@ -675,15 +662,6 @@
     } finally { $('lab-upload-btn').disabled = false; }
   }
 
-  /* Patient lookup tab (staff-side; patients use the public report.html page) */
-  async function patientFetch() {
-    const code = $('patient-code').value.trim().toUpperCase(); const resultEl = $('patient-result');
-    if (!code) return toast('Enter a code', '#ef4444');
-    const { data, error } = await sb.rpc('get_lab_by_code', { p_code: code });
-    if (error || !data) { resultEl.innerHTML = `<div style="padding:14px; background:var(--coral-soft); border-radius:12px; color:#c2410c; font-weight:700; text-align:center;">Invalid or expired code.</div>`; return; }
-    resultEl.innerHTML = `<div style="padding:16px; background:var(--teal-bg); border:1px solid var(--teal-soft); border-radius:12px;"><div class="label-sm">Patient</div><div style="font-weight:700; margin-bottom:8px;">${escapeHtml(data.patient_name)}</div><div class="label-sm">Test</div><div style="font-weight:700; margin-bottom:8px;">${escapeHtml(data.test_name)}</div><div style="font-size:12px; color:var(--muted); margin-bottom:12px;">Uploaded ${formatDateTime(data.uploaded_at)} · ${expiryLabel(data.expires_at)}</div><div style="display:flex; flex-direction:column; gap:8px;">${data.files.map(f => `<a href="${f.url}" target="_blank" rel="noopener" class="secondary" style="text-decoration:none; padding:10px 16px; text-align:center;">⬇ Download ${escapeHtml(f.name)} <span style="color:var(--muted); font-weight:500;">(${formatBytes(f.size)})</span></a>`).join('')}</div></div>`;
-  }
-
   document.addEventListener('click', (e) => { if (e.target.id === 'lab-pick-btn') $('lab-files').click(); });
   document.addEventListener('change', (e) => {
     if (e.target.id !== 'lab-files') return;
@@ -691,8 +669,6 @@
     e.target.value = ''; renderStaged();
   });
   document.addEventListener('click', (e) => { if (e.target.id === 'lab-upload-btn') uploadLab(); });
-  document.addEventListener('click', (e) => { if (e.target.id === 'patient-fetch-btn') patientFetch(); });
-  document.addEventListener('keydown', (e) => { if (e.target.id === 'patient-code' && e.key === 'Enter') patientFetch(); });
 
   /* init */
   boot();

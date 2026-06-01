@@ -1,0 +1,61 @@
+name: Nightly DB backup
+
+# Encrypted nightly backup of the Supabase Postgres database.
+# Runs at 03:00 Asia/Kolkata (21:30 UTC), after clinic hours, plus on demand.
+# The dump is AES-256 encrypted BEFORE upload because Actions artifacts on a
+# public repo are downloadable — only someone with BACKUP_PASSPHRASE can read it.
+#
+# Required repo secrets:
+#   SUPABASE_DB_URL    — session-pooler connection string (port 5432)
+#   BACKUP_PASSPHRASE  — passphrase used to encrypt/decrypt the dump
+
+on:
+  schedule:
+    - cron: '30 21 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL 17 client
+        run: |
+          set -euo pipefail
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+          echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Dump and encrypt
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DATABASE_URL:-}" ];      then echo "::error::SUPABASE_DB_URL secret is not set";   exit 1; fi
+          if [ -z "${BACKUP_PASSPHRASE:-}" ]; then echo "::error::BACKUP_PASSPHRASE secret is not set"; exit 1; fi
+          ts=$(date -u +%Y%m%d-%H%M%SZ)
+          mkdir -p out
+          pg_dump "$DATABASE_URL" --no-owner --no-privileges -Fc -f "almadina-$ts.dump"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+            -in "almadina-$ts.dump" -out "out/almadina-$ts.dump.enc" -pass env:BACKUP_PASSPHRASE
+          rm -f "almadina-$ts.dump"
+          echo "Encrypted backup:"; ls -lh out
+          echo "ARTIFACT_NAME=almadina-db-$ts" >> "$GITHUB_ENV"
+
+      - name: Upload encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: out/*.enc
+          retention-days: 30
+          if-no-files-found: error
