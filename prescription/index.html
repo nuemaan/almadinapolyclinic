@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Prescription Manager</title>
+<title>Al Madina Polyclinic — Staff Console</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -38,157 +38,102 @@
     align-items: center;
     justify-content: space-between;
     box-shadow: 0 4px 20px rgba(13,148,136,0.18);
+    flex-wrap: wrap;
+    gap: 12px;
   }
   header h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.2px; }
-  .tabs { display: flex; gap: 6px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
   .tab-btn {
     background: rgba(255,255,255,0.18);
-    color: #fff;
-    border: none;
-    padding: 9px 22px;
-    border-radius: 999px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 700;
-    font-family: inherit;
+    color: #fff; border: none;
+    padding: 9px 22px; border-radius: 999px;
+    cursor: pointer; font-size: 14px; font-weight: 700; font-family: inherit;
     transition: all 0.15s;
   }
   .tab-btn:hover { background: rgba(255,255,255,0.28); }
   .tab-btn.active { background: #fff; color: var(--teal-dark); }
+  .whoami { font-size: 13px; opacity: .92; display: flex; align-items: center; gap: 10px; }
+  .logout-btn {
+    background: rgba(255,255,255,0.18); color:#fff; border:none;
+    padding: 6px 14px; border-radius: 999px; cursor: pointer; font-weight:700; font-family:inherit; font-size:12.5px;
+  }
+  .logout-btn:hover { background: rgba(255,255,255,0.3); }
 
   main { padding: 28px 24px; max-width: 1200px; margin: 0 auto; }
   .panel { display: none; }
   .panel.active { display: block; }
 
   .card {
-    background: #fff;
-    border-radius: 16px;
-    padding: 22px;
+    background: #fff; border-radius: 16px; padding: 22px;
     box-shadow: 0 2px 12px rgba(13,148,136,0.06), 0 1px 3px rgba(0,0,0,0.04);
-    margin-bottom: 18px;
-    border: 1px solid rgba(13,148,136,0.08);
+    margin-bottom: 18px; border: 1px solid rgba(13,148,136,0.08);
   }
   .card h2 {
-    margin: 0 0 18px;
-    font-size: 17px;
-    font-weight: 800;
-    color: var(--teal-dark);
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    margin: 0 0 18px; font-size: 17px; font-weight: 800; color: var(--teal-dark);
+    display: flex; align-items: center; gap: 8px;
   }
-  .card h2::before {
-    content: '';
-    width: 4px;
-    height: 18px;
-    background: var(--coral);
-    border-radius: 2px;
-  }
+  .card h2::before { content: ''; width: 4px; height: 18px; background: var(--coral); border-radius: 2px; }
 
   .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
   label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
   input, select, textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1.5px solid var(--line);
-    border-radius: 10px;
-    font-size: 14px;
-    font-family: inherit;
-    background: #fff;
-    transition: all 0.15s;
+    width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px;
+    font-size: 14px; font-family: inherit; background: #fff; transition: all 0.15s;
   }
   textarea { resize: vertical; min-height: 70px; }
-  input:focus, select:focus, textarea:focus {
-    outline: none;
-    border-color: var(--teal);
-    box-shadow: 0 0 0 3px rgba(13,148,136,0.12);
-  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(13,148,136,0.12); }
 
   .med-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1.2fr 1fr 0.8fr 1.5fr auto;
-    gap: 10px;
-    align-items: end;
-    padding: 12px;
-    background: var(--teal-bg);
-    border-radius: 12px;
-    margin-bottom: 10px;
-    border: 1px solid var(--teal-soft);
+    display: grid; grid-template-columns: 2fr 1fr 1.2fr 1fr 0.8fr 1.5fr auto;
+    gap: 10px; align-items: end; padding: 12px; background: var(--teal-bg);
+    border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--teal-soft);
   }
   .med-row label { font-size: 10px; }
 
   button.primary {
-    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
-    color: #fff;
-    border: none;
-    padding: 11px 22px;
-    border-radius: 999px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 700;
-    font-family: inherit;
-    box-shadow: 0 2px 8px rgba(13,148,136,0.3);
-    transition: all 0.15s;
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark)); color: #fff; border: none;
+    padding: 11px 22px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 700; font-family: inherit;
+    box-shadow: 0 2px 8px rgba(13,148,136,0.3); transition: all 0.15s;
   }
   button.primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(13,148,136,0.4); }
+  button.primary:disabled { opacity:.6; cursor: not-allowed; transform:none; }
   button.secondary {
-    background: #fff;
-    color: var(--teal-dark);
-    border: 1.5px solid var(--teal);
-    padding: 9px 18px;
-    border-radius: 999px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 700;
-    font-family: inherit;
-    transition: all 0.15s;
+    background: #fff; color: var(--teal-dark); border: 1.5px solid var(--teal);
+    padding: 9px 18px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 700; font-family: inherit; transition: all 0.15s;
   }
   button.secondary:hover { background: var(--teal-bg); }
   button.danger {
-    background: var(--coral-soft);
-    color: #c2410c;
-    border: none;
-    padding: 7px 12px;
-    border-radius: 999px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 700;
-    font-family: inherit;
-    transition: all 0.15s;
+    background: var(--coral-soft); color: #c2410c; border: none;
+    padding: 7px 12px; border-radius: 999px; cursor: pointer; font-size: 12px; font-weight: 700; font-family: inherit; transition: all 0.15s;
   }
   button.danger:hover { background: #fed7aa; }
+  .actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 
-  .actions { display: flex; gap: 10px; margin-top: 10px; }
-
-  /* Pharmacist layout */
-  .pharm-layout {
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 18px;
-  }
+  /* Queue / pharmacist two-pane layout */
+  .pharm-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; }
+  @media (max-width: 800px) { .pharm-layout { grid-template-columns: 1fr; } .grid, .grid-2 { grid-template-columns: 1fr; } }
   .rx-list {
-    background: #fff;
-    border-radius: 16px;
-    padding: 14px;
+    background: #fff; border-radius: 16px; padding: 14px;
     box-shadow: 0 2px 12px rgba(13,148,136,0.06), 0 1px 3px rgba(0,0,0,0.04);
-    border: 1px solid rgba(13,148,136,0.08);
-    max-height: 80vh;
-    overflow-y: auto;
+    border: 1px solid rgba(13,148,136,0.08); max-height: 78vh; overflow-y: auto;
   }
+  .rx-list-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .rx-list-head .sess { font-size: 12px; color: var(--muted); font-weight:700; }
   .rx-item {
-    padding: 13px;
-    border-radius: 12px;
-    cursor: pointer;
-    border: 1.5px solid transparent;
-    margin-bottom: 8px;
-    transition: all 0.15s;
+    padding: 13px; border-radius: 12px; cursor: pointer; border: 1.5px solid transparent;
+    margin-bottom: 8px; transition: all 0.15s; display:flex; gap:10px; align-items:center;
   }
   .rx-item:hover { background: var(--teal-bg); }
   .rx-item.selected { background: var(--teal-bg); border-color: var(--teal); }
+  .rx-item .tok { font-weight: 800; font-size: 18px; color: var(--teal-dark); min-width: 38px; }
   .rx-item .name { font-weight: 700; font-size: 14px; color: var(--ink); }
-  .rx-item .meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .rx-item .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .pill { font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing:.03em; }
+  .pill.home { background: var(--coral-soft); color: #c2410c; }
+  .pill.walkin { background: var(--teal-soft); color: var(--teal-dark); }
+  .pill.attending { background: #fde68a; color: #92400e; }
 
   .empty { text-align: center; color: #9ca3af; padding: 40px 20px; font-size: 14px; }
 
@@ -198,20 +143,9 @@
   tr:last-child td { border-bottom: none; }
 
   .toast {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: var(--teal);
-    color: #fff;
-    padding: 12px 22px;
-    border-radius: 999px;
-    box-shadow: 0 6px 20px rgba(13,148,136,0.35);
-    opacity: 0;
-    transform: translateY(-10px);
-    transition: all 0.2s;
-    pointer-events: none;
-    z-index: 1000;
-    font-weight: 700;
+    position: fixed; top: 20px; right: 20px; background: var(--teal); color: #fff;
+    padding: 12px 22px; border-radius: 999px; box-shadow: 0 6px 20px rgba(13,148,136,0.35);
+    opacity: 0; transform: translateY(-10px); transition: all 0.2s; pointer-events: none; z-index: 1000; font-weight: 700;
   }
   .toast.show { opacity: 1; transform: translateY(0); }
 
@@ -220,17 +154,30 @@
   .info-row .label-sm { font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
   .info-row .val { font-weight: 700; color: var(--ink); margin-top: 2px; }
 
-  /* Print styles */
+  /* history */
+  .hist { margin: 4px 0 18px; }
+  .hist-item { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; background: #fff; }
+  .hist-item summary { cursor: pointer; font-weight: 700; color: var(--teal-dark); font-size: 13.5px; }
+  .hist-item .h-meds { margin-top: 8px; font-size: 13px; }
+  .hist-note { background: var(--coral-soft); color:#9a3412; border-radius:10px; padding:10px 12px; font-size:13px; font-weight:700; margin-bottom:12px; }
+
+  /* Login */
+  .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+  .login-card { width: 100%; max-width: 380px; background:#fff; border-radius: 20px; padding: 30px 26px;
+    box-shadow: 0 12px 40px rgba(13,148,136,0.16); border: 1px solid rgba(13,148,136,0.08); }
+  .login-card .brand { text-align:center; margin-bottom: 18px; }
+  .login-card .brand .b1 { font-size: 30px; }
+  .login-card .brand h1 { font-size: 19px; color: var(--teal-dark); margin: 8px 0 2px; }
+  .login-card .brand p { font-size: 12.5px; color: var(--muted); margin: 0; }
+  .login-card label { margin-top: 12px; }
+  .login-err { color:#c2410c; background: var(--coral-soft); border-radius:10px; padding:9px 12px; font-size:13px; font-weight:700; margin-top:12px; }
+  .login-card button.primary { width:100%; margin-top: 18px; padding: 12px; font-size: 15px; }
+
+  .hidden { display: none !important; }
   @media print {
     body * { visibility: hidden; }
     #print-area, #print-area * { visibility: visible; }
-    #print-area {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      padding: 30px;
-      background: #fff;
-    }
+    #print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 30px; background: #fff; }
     #print-area .no-print { display: none !important; }
     .toast { display: none !important; }
   }
@@ -238,89 +185,66 @@
 </head>
 <body>
 
+<!-- LOGIN -->
+<div id="login" class="login-wrap">
+  <div class="login-card">
+    <div class="brand">
+      <div class="b1">🧸</div>
+      <h1>Al Madina Staff Console</h1>
+      <p>Doctor · Reception · Lab</p>
+    </div>
+    <label>Email</label>
+    <input id="login-email" type="email" autocomplete="username" placeholder="you@almadinapolyclinic.com" />
+    <label>Password</label>
+    <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••" />
+    <div id="login-err" class="login-err hidden"></div>
+    <button class="primary" id="login-btn">Sign in</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
 <header>
   <div>
     <h1>Al Madina Polyclinic &amp; Laboratory</h1>
-    <div style="font-size: 12px; opacity: 0.85; margin-top: 2px;">Beehama, Ganderbal, Kashmir · +91 95965 79443 · almadinapolyclinic.com</div>
+    <div style="font-size: 12px; opacity: 0.85; margin-top: 2px;">Beehama, Ganderbal, Kashmir · +91 95965 79443</div>
   </div>
-  <div class="tabs">
+  <div class="tabs" id="tabs">
     <button class="tab-btn active" data-tab="doctor">Doctor</button>
     <button class="tab-btn" data-tab="pharmacist">Pharmacist</button>
     <button class="tab-btn" data-tab="lab">Lab</button>
     <button class="tab-btn" data-tab="patient">Patient</button>
   </div>
+  <div class="whoami"><span id="who">—</span><button class="logout-btn" id="logout-btn">Logout</button></div>
 </header>
 
 <main>
-  <!-- DOCTOR PANEL -->
+  <!-- DOCTOR PANEL — live queue + consult -->
   <section id="panel-doctor" class="panel active">
-    <div class="card">
-      <h2>Doctor Profile <span style="font-weight: 400; color: #6b7280; font-size: 12px;">(saved automatically — set once)</span></h2>
-      <div class="grid-2">
-        <div>
-          <label>Select Doctor</label>
-          <select id="d-select">
-            <option value="">-- choose --</option>
-            <option value="Dr. Rayis Ahmad Rather|">Dr. Rayis Ahmad Rather</option>
-            <option value="Dr. Ajaz Ahmad Suhaff|">Dr. Ajaz Ahmad Suhaff</option>
-            <option value="Dr. Mir Laieq Ishtiyaq|">Dr. Mir Laieq Ishtiyaq</option>
-            <option value="Dr. Ajaz Ahmad Bhat|">Dr. Ajaz Ahmad Bhat</option>
-            <option value="__custom__">Other / Custom...</option>
-          </select>
+    <div class="pharm-layout">
+      <div class="rx-list">
+        <div class="rx-list-head">
+          <strong style="color:var(--teal-dark)">Live queue</strong>
+          <span class="sess" id="dq-session">—</span>
         </div>
-        <div id="custom-doctor-wrap" style="display: none;">
-          <label>Doctor Name</label>
-          <input id="d-custom" type="text" placeholder="Dr. ..." />
-        </div>
+        <div id="dq-list"><div class="empty">Loading…</div></div>
       </div>
-      <div id="d-current" style="margin-top: 12px; font-size: 13px; color: var(--teal-dark); font-weight: 700;"></div>
-    </div>
-
-    <div class="card">
-      <h2>Patient Details</h2>
-      <div class="grid">
-        <div><label>Patient Name</label><input id="p-name" type="text" placeholder="Full name" /></div>
-        <div><label>Age</label><input id="p-age" type="number" min="0" placeholder="Years" /></div>
-        <div>
-          <label>Gender</label>
-          <select id="p-gender">
-            <option value="">Select</option>
-            <option>Male</option>
-            <option>Female</option>
-            <option>Other</option>
-          </select>
-        </div>
-      </div>
-      <div style="margin-top: 12px;">
-        <label>Notes / Diagnosis</label>
-        <textarea id="d-notes" placeholder="Symptoms, diagnosis, advice..."></textarea>
-      </div>
-      <div style="margin-top: 8px; font-size: 12px; color: #6b7280;">Date will be set automatically to today.</div>
-    </div>
-
-    <div class="card">
-      <h2>Medicines</h2>
-      <div id="med-rows"></div>
-      <div class="actions">
-        <button class="secondary" id="add-med-btn">+ Add Medicine</button>
-      </div>
-    </div>
-
-    <div class="actions">
-      <button class="primary" id="save-rx-btn">Save Prescription</button>
-      <button class="secondary" id="reset-rx-btn">Reset Form</button>
+      <div id="dq-detail"><div class="card"><div class="empty">Select a patient from the queue to begin.</div></div></div>
     </div>
   </section>
 
-  <!-- PHARMACIST PANEL -->
+  <!-- PHARMACIST PANEL — prescriptions from the database -->
   <section id="panel-pharmacist" class="panel">
     <div class="pharm-layout">
-      <div class="rx-list" id="rx-list"></div>
+      <div class="rx-list">
+        <div class="rx-list-head"><strong style="color:var(--teal-dark)">Saved prescriptions</strong></div>
+        <div id="rx-list"><div class="empty">Loading…</div></div>
+      </div>
       <div id="rx-detail"></div>
     </div>
   </section>
 
-  <!-- LAB PANEL -->
+  <!-- LAB PANEL (browser-local for now; moves to Supabase in a later phase) -->
   <section id="panel-lab" class="panel">
     <div class="card">
       <h2>Upload Test Report</h2>
@@ -329,45 +253,40 @@
         <div><label>Test Name</label><input id="lab-test" type="text" placeholder="e.g. CBC, Blood Sugar" /></div>
       </div>
       <div style="margin-top: 14px;">
-        <label>Test File(s) <span style="text-transform: none; font-weight: 500; color: var(--muted);">PDF / image / any file · hold Cmd/Ctrl to pick several at once</span></label>
+        <label>Test File(s) <span style="text-transform: none; font-weight: 500; color: var(--muted);">PDF / image / any file · hold Cmd/Ctrl to pick several</span></label>
         <input id="lab-files" type="file" multiple style="display: none;" />
         <button type="button" class="secondary" id="lab-pick-btn">+ Add File(s)</button>
         <div id="lab-staged" style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;"></div>
       </div>
-      <div class="actions">
-        <button class="primary" id="lab-upload-btn">Upload &amp; Generate Code</button>
-      </div>
+      <div class="actions"><button class="primary" id="lab-upload-btn">Upload &amp; Generate Code</button></div>
       <div style="margin-top: 10px; font-size: 12px; color: var(--muted);">Test files expire and are auto-deleted 3 days after upload.</div>
     </div>
-
-    <div class="card">
-      <h2>Recent Uploads</h2>
-      <div id="lab-list"></div>
-    </div>
+    <div class="card"><h2>Recent Uploads</h2><div id="lab-list"></div></div>
   </section>
 
-  <!-- PATIENT PANEL -->
+  <!-- PATIENT PANEL — lab report download by code -->
   <section id="panel-patient" class="panel">
     <div class="card" style="max-width: 520px; margin: 20px auto;">
-      <h2>Download Your Test Report</h2>
-      <p style="font-size: 14px; color: var(--muted); margin: 0 0 16px;">Enter the code given to you by the lab to view and download your test report.</p>
+      <h2>Download Test Report</h2>
+      <p style="font-size: 14px; color: var(--muted); margin: 0 0 16px;">Enter the code given by the lab to view and download the test report.</p>
       <label>Access Code</label>
       <input id="patient-code" type="text" placeholder="e.g. A3F9K2" maxlength="10" style="text-transform: uppercase; font-size: 18px; letter-spacing: 4px; font-weight: 700; text-align: center;" />
-      <div class="actions" style="justify-content: center;">
-        <button class="primary" id="patient-fetch-btn">Fetch Report</button>
-      </div>
+      <div class="actions" style="justify-content: center;"><button class="primary" id="patient-fetch-btn">Fetch Report</button></div>
       <div id="patient-result" style="margin-top: 18px;"></div>
     </div>
   </section>
 </main>
+</div>
 
 <div class="toast" id="toast">Saved</div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../supabase-config.js?v=1"></script>
 <script>
-  const STORAGE_KEY = 'prescriptions';
-  const DOCTOR_KEY = 'doctorProfile';
+  const sb = window.supabaseClient;
+  const $ = (id) => document.getElementById(id);
   const LAB_KEY = 'labTests';
-  const EXPIRY_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+  const EXPIRY_MS = 3 * 24 * 60 * 60 * 1000;
 
   const CLINIC = {
     name: 'Al Madina Polyclinic & Laboratory',
@@ -376,332 +295,20 @@
     website: 'almadinapolyclinic.com',
   };
 
-  /* ---------- storage helpers ---------- */
-  const load = () => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch { return []; }
+  const TABS_BY_ROLE = {
+    doctor:    ['doctor', 'pharmacist'],
+    reception: ['doctor', 'pharmacist', 'lab', 'patient'],
+    lab:       ['lab', 'patient'],
   };
-  const save = (data) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+  let staffProfile = null;   // { role, name }
+  let currentSession = null; // { session_date, session }
 
   /* ---------- toast ---------- */
-  const toast = (msg, color = '#10b981') => {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.style.background = color;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 1800);
+  const toast = (msg, color = '#0d9488') => {
+    const t = $('toast'); t.textContent = msg; t.style.background = color;
+    t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1800);
   };
-
-  /* ---------- tabs ---------- */
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
-      if (btn.dataset.tab === 'pharmacist') renderPharmacist();
-      if (btn.dataset.tab === 'lab') renderLab();
-      if (btn.dataset.tab === 'patient') {
-        document.getElementById('patient-code').value = '';
-        document.getElementById('patient-result').innerHTML = '';
-      }
-    });
-  });
-
-  /* ---------- DOCTOR ---------- */
-  const medRowsEl = document.getElementById('med-rows');
-
-  function makeMedRow(med = {}) {
-    const div = document.createElement('div');
-    div.className = 'med-row';
-    div.innerHTML = `
-      <div><label>Medicine</label><input class="m-name" placeholder="e.g. Paracetamol" value="${med.name || ''}"></div>
-      <div><label>Dosage</label><input class="m-dosage" placeholder="500mg" value="${med.dosage || ''}"></div>
-      <div><label>Frequency</label><input class="m-freq" placeholder="Twice daily" value="${med.frequency || ''}"></div>
-      <div><label>Duration</label><input class="m-dur" placeholder="5 days" value="${med.duration || ''}"></div>
-      <div><label>Qty</label><input class="m-qty" type="number" min="0" placeholder="10" value="${med.quantity || ''}"></div>
-      <div><label>Instructions</label><input class="m-inst" placeholder="After food" value="${med.instructions || ''}"></div>
-      <div><button class="danger" type="button">Remove</button></div>
-    `;
-    div.querySelector('button.danger').addEventListener('click', () => div.remove());
-    return div;
-  }
-
-  document.getElementById('add-med-btn').addEventListener('click', () => {
-    medRowsEl.appendChild(makeMedRow());
-  });
-
-  document.getElementById('reset-rx-btn').addEventListener('click', resetForm);
-
-  function resetForm() {
-    ['p-name','p-age','p-gender','d-notes'].forEach(id => document.getElementById(id).value = '');
-    medRowsEl.innerHTML = '';
-    medRowsEl.appendChild(makeMedRow());
-  }
-
-  /* ---------- Doctor profile (persisted once) ---------- */
-  const dSelect = document.getElementById('d-select');
-  const dCustomWrap = document.getElementById('custom-doctor-wrap');
-  const dCustom = document.getElementById('d-custom');
-  const dCurrent = document.getElementById('d-current');
-
-  function loadDoctor() {
-    try { return JSON.parse(localStorage.getItem(DOCTOR_KEY)) || null; } catch { return null; }
-  }
-  function saveDoctor(profile) {
-    if (profile) localStorage.setItem(DOCTOR_KEY, JSON.stringify(profile));
-    else localStorage.removeItem(DOCTOR_KEY);
-    renderCurrentDoctor();
-  }
-  function renderCurrentDoctor() {
-    const p = loadDoctor();
-    dCurrent.textContent = p ? `Current: ${p.name}` : 'No doctor selected yet.';
-  }
-
-  function initDoctorProfile() {
-    const p = loadDoctor();
-    if (p) {
-      const match = Array.from(dSelect.options).find(o => o.value.startsWith(p.name + '|'));
-      if (match) {
-        dSelect.value = match.value;
-        dCustomWrap.style.display = 'none';
-      } else {
-        dSelect.value = '__custom__';
-        dCustomWrap.style.display = 'block';
-        dCustom.value = p.name;
-      }
-    }
-    renderCurrentDoctor();
-  }
-
-  dSelect.addEventListener('change', () => {
-    const v = dSelect.value;
-    if (v === '__custom__') {
-      dCustomWrap.style.display = 'block';
-      dCustom.focus();
-      return;
-    }
-    dCustomWrap.style.display = 'none';
-    if (!v) { saveDoctor(null); return; }
-    const [name, credentials] = v.split('|');
-    saveDoctor({ name, credentials });
-  });
-
-  dCustom.addEventListener('blur', () => {
-    const name = dCustom.value.trim();
-    if (name) saveDoctor({ name, credentials: '' });
-  });
-
-  document.getElementById('save-rx-btn').addEventListener('click', () => {
-    const name = document.getElementById('p-name').value.trim();
-    if (!name) { toast('Patient name is required', '#ef4444'); return; }
-
-    const doctor = loadDoctor();
-    if (!doctor) { toast('Select a doctor in Doctor Profile first', '#ef4444'); return; }
-
-    const meds = Array.from(medRowsEl.querySelectorAll('.med-row')).map(row => ({
-      id: uid(),
-      name: row.querySelector('.m-name').value.trim(),
-      dosage: row.querySelector('.m-dosage').value.trim(),
-      frequency: row.querySelector('.m-freq').value.trim(),
-      duration: row.querySelector('.m-dur').value.trim(),
-      quantity: row.querySelector('.m-qty').value.trim(),
-      instructions: row.querySelector('.m-inst').value.trim(),
-    })).filter(m => m.name);
-
-    if (meds.length === 0) { toast('Add at least one medicine', '#ef4444'); return; }
-
-    const today = new Date();
-    const rx = {
-      id: uid(),
-      createdAt: today.toISOString(),
-      patient: {
-        name,
-        age: document.getElementById('p-age').value.trim(),
-        gender: document.getElementById('p-gender').value,
-      },
-      doctorName: doctor.name,
-      doctorCredentials: doctor.credentials || '',
-      date: today.toISOString().slice(0, 10),
-      notes: document.getElementById('d-notes').value.trim(),
-      medicines: meds,
-    };
-
-    const all = load();
-    all.push(rx);
-    save(all);
-    toast('Prescription saved');
-    resetForm();
-  });
-
-  /* ---------- PHARMACIST ---------- */
-  let selectedId = null;
-
-  function renderPharmacist() {
-    const all = load().slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const listEl = document.getElementById('rx-list');
-    const detailEl = document.getElementById('rx-detail');
-
-    if (all.length === 0) {
-      listEl.innerHTML = '<div class="empty">No prescriptions yet</div>';
-      detailEl.innerHTML = '<div class="card"><div class="empty">Saved prescriptions will appear here</div></div>';
-      return;
-    }
-
-    listEl.innerHTML = all.map(rx => `
-      <div class="rx-item ${rx.id === selectedId ? 'selected' : ''}" data-id="${rx.id}" style="display: flex; justify-content: space-between; align-items: start; gap: 8px;">
-        <div style="flex: 1; min-width: 0;">
-          <div class="name">${escapeHtml(rx.patient.name)}</div>
-          <div class="meta">${formatDate(rx.date || rx.createdAt)} • ${rx.medicines.length} medicine${rx.medicines.length === 1 ? '' : 's'}</div>
-        </div>
-        <button class="danger rx-del" data-id="${rx.id}" title="Delete prescription" style="flex-shrink: 0;">×</button>
-      </div>
-    `).join('');
-
-    listEl.querySelectorAll('.rx-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        if (e.target.classList.contains('rx-del')) return;
-        selectedId = item.dataset.id;
-        renderPharmacist();
-      });
-    });
-    listEl.querySelectorAll('.rx-del').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        deletePrescription(btn.dataset.id);
-      });
-    });
-
-    if (!selectedId || !all.find(r => r.id === selectedId)) {
-      selectedId = all[0].id;
-    }
-    renderDetail(selectedId);
-  }
-
-  function renderDetail(id) {
-    const all = load();
-    const rx = all.find(r => r.id === id);
-    const detailEl = document.getElementById('rx-detail');
-    if (!rx) {
-      detailEl.innerHTML = '<div class="card"><div class="empty">Select a prescription</div></div>';
-      return;
-    }
-
-    detailEl.innerHTML = `
-      <div id="print-area">
-        <div class="card">
-          <div class="clinic-header" style="text-align: center; padding: 4px 0 16px; margin-bottom: 18px; border-bottom: 2px dashed var(--teal); position: relative;">
-            <div style="font-size: 24px; font-weight: 800; color: var(--teal-dark); letter-spacing: 0.3px;">${escapeHtml(CLINIC.name)}</div>
-            <div style="font-size: 12px; color: #374151; margin-top: 6px;">${escapeHtml(CLINIC.address)}</div>
-            <div style="font-size: 12px; color: var(--coral); font-weight: 700; margin-top: 2px;">Phone: ${escapeHtml(CLINIC.phone)} · ${escapeHtml(CLINIC.website)}</div>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-            <h2 style="margin: 0;">Prescription</h2>
-            <div class="no-print actions" style="margin: 0;">
-              <button class="secondary" id="print-btn">Print</button>
-              <button class="primary" id="csv-btn">Save for ERP (CSV)</button>
-            </div>
-          </div>
-          <div class="info-row">
-            <div><div class="label-sm">Patient</div><div class="val">${escapeHtml(rx.patient.name)}</div></div>
-            <div><div class="label-sm">Age / Gender</div><div class="val">${escapeHtml(rx.patient.age || '-')} / ${escapeHtml(rx.patient.gender || '-')}</div></div>
-            <div><div class="label-sm">Doctor</div><div class="val">${escapeHtml(rx.doctorName || '-')}</div></div>
-            <div><div class="label-sm">Date</div><div class="val">${formatDate(rx.date || rx.createdAt)}</div></div>
-          </div>
-          ${rx.notes ? `<div style="margin-bottom: 16px;"><div class="label-sm">Notes</div><div>${escapeHtml(rx.notes)}</div></div>` : ''}
-
-          ${rx.medicines.length === 0 ? '<div class="empty">All medicines removed</div>' : `
-          <table>
-            <thead>
-              <tr>
-                <th>Medicine</th><th>Dosage</th><th>Frequency</th><th>Duration</th><th>Qty</th><th>Instructions</th><th class="no-print"></th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rx.medicines.map(m => `
-                <tr>
-                  <td>${escapeHtml(m.name)}</td>
-                  <td>${escapeHtml(m.dosage || '-')}</td>
-                  <td>${escapeHtml(m.frequency || '-')}</td>
-                  <td>${escapeHtml(m.duration || '-')}</td>
-                  <td>${escapeHtml(m.quantity || '-')}</td>
-                  <td>${escapeHtml(m.instructions || '-')}</td>
-                  <td class="no-print"><button class="danger" data-med="${m.id}">Delete</button></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>`}
-        </div>
-      </div>
-    `;
-
-    detailEl.querySelectorAll('button.danger').forEach(btn => {
-      btn.addEventListener('click', () => deleteMedicine(rx.id, btn.dataset.med));
-    });
-    const printBtn = document.getElementById('print-btn');
-    if (printBtn) printBtn.addEventListener('click', () => window.print());
-    const csvBtn = document.getElementById('csv-btn');
-    if (csvBtn) csvBtn.addEventListener('click', () => exportCsv(rx));
-  }
-
-  function deletePrescription(rxId) {
-    const all = load();
-    const rx = all.find(r => r.id === rxId);
-    if (!rx) return;
-    if (!confirm(`Delete the entire prescription for ${rx.patient.name}? This cannot be undone.`)) return;
-    save(all.filter(r => r.id !== rxId));
-    if (selectedId === rxId) selectedId = null;
-    toast('Prescription deleted');
-    renderPharmacist();
-  }
-
-  function deleteMedicine(rxId, medId) {
-    if (!confirm('Remove this medicine from the prescription?')) return;
-    const all = load();
-    const rx = all.find(r => r.id === rxId);
-    if (!rx) return;
-    rx.medicines = rx.medicines.filter(m => m.id !== medId);
-    save(all);
-    toast('Medicine removed');
-    renderPharmacist();
-  }
-
-  /* ---------- CSV export ---------- */
-  function exportCsv(rx) {
-    if (rx.medicines.length === 0) { toast('No medicines to export', '#ef4444'); return; }
-    const headers = ['prescription_id','date','patient_name','medicine_name','dosage','frequency','duration','quantity','instructions'];
-    const rows = rx.medicines.map(m => [
-      rx.id,
-      rx.date || rx.createdAt.slice(0, 10),
-      rx.patient.name,
-      m.name,
-      m.dosage,
-      m.frequency,
-      m.duration,
-      m.quantity,
-      m.instructions,
-    ]);
-    const csv = [headers, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `prescription-${rx.id}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast('CSV downloaded');
-  }
-
-  function csvCell(v) {
-    const s = (v == null ? '' : String(v));
-    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
-    return s;
-  }
-
-  /* ---------- utils ---------- */
   function escapeHtml(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -709,220 +316,354 @@
   }
   function formatDate(s) {
     if (!s) return '-';
-    const d = new Date(s);
-    if (isNaN(d)) return s;
+    const d = new Date(s); if (isNaN(d)) return s;
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   }
+  function formatDateTime(ts) { return new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }); }
+  function formatBytes(b) { if (b < 1024) return b + ' B'; if (b < 1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(2)+' MB'; }
 
-  /* cross-tab sync */
-  window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_KEY && document.getElementById('panel-pharmacist').classList.contains('active')) {
-      renderPharmacist();
-    }
-  });
+  /* ====================== AUTH ====================== */
+  async function boot() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) await enterApp(); else showLogin();
+  }
+  function showLogin() { $('app').classList.add('hidden'); $('login').classList.remove('hidden'); }
 
-  /* ---------- LAB ---------- */
+  async function enterApp() {
+    const { data: { user } } = await sb.auth.getUser();
+    const { data: prof } = await sb.from('staff').select('role,name').eq('user_id', user.id).single();
+    staffProfile = prof || { role: 'reception', name: user.email };
+    $('who').textContent = `${staffProfile.name} · ${staffProfile.role}`;
+
+    // Show only the tabs this role needs; activate the first.
+    const allowed = TABS_BY_ROLE[staffProfile.role] || ['doctor'];
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('hidden', !allowed.includes(b.dataset.tab)));
+    $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+    activateTab(allowed[0]);
+
+    const { data: cs } = await sb.rpc('app_current_session');
+    currentSession = Array.isArray(cs) ? cs[0] : cs;
+    startQueueLive();
+  }
+
+  $('login-btn').addEventListener('click', doLogin);
+  $('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  async function doLogin() {
+    const email = $('login-email').value.trim();
+    const password = $('login-password').value;
+    const err = $('login-err'); err.classList.add('hidden');
+    $('login-btn').disabled = true;
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    $('login-btn').disabled = false;
+    if (error) { err.textContent = 'Login failed: ' + error.message; err.classList.remove('hidden'); return; }
+    await enterApp();
+  }
+  $('logout-btn').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
+
+  /* ---------- tabs ---------- */
+  function activateTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    $('panel-' + tab).classList.add('active');
+    if (tab === 'doctor') loadQueue();
+    if (tab === 'pharmacist') loadPrescriptions();
+    if (tab === 'lab') renderLab();
+    if (tab === 'patient') { $('patient-code').value = ''; $('patient-result').innerHTML = ''; }
+  }
+  document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => activateTab(b.dataset.tab)));
+
+  /* ====================== DOCTOR: live queue ====================== */
+  let selectedVisitId = null;
+  let queueChannel = null;
+
+  function startQueueLive() {
+    loadQueue();
+    if (queueChannel) sb.removeChannel(queueChannel);
+    queueChannel = sb.channel('queue-' + Date.now())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'visits' }, () => {
+        if ($('panel-doctor').classList.contains('active')) loadQueue();
+        if ($('panel-pharmacist').classList.contains('active')) loadPrescriptions();
+      })
+      .subscribe();
+    setInterval(() => { if ($('panel-doctor').classList.contains('active')) loadQueue(); }, 7000);
+  }
+
+  async function loadQueue() {
+    if (!currentSession) return;
+    $('dq-session').textContent = `${formatDate(currentSession.session_date)} · ${currentSession.session.toUpperCase()}`;
+    const { data, error } = await sb
+      .from('visits')
+      .select('id,token_number,source,status,patients(name,phone,age,gender)')
+      .eq('session_date', currentSession.session_date)
+      .eq('session', currentSession.session)
+      .in('status', ['waiting', 'attending'])
+      .order('token_number', { ascending: true });
+    const list = $('dq-list');
+    if (error) { list.innerHTML = `<div class="empty">Error: ${escapeHtml(error.message)}</div>`; return; }
+    if (!data.length) { list.innerHTML = '<div class="empty">No patients waiting.</div>'; return; }
+    list.innerHTML = data.map(v => `
+      <div class="rx-item ${v.id === selectedVisitId ? 'selected' : ''}" data-id="${v.id}">
+        <div class="tok">#${v.token_number}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="name">${escapeHtml(v.patients?.name || '—')}</div>
+          <div class="meta">📞 ${escapeHtml(v.patients?.phone || '—')}</div>
+        </div>
+        <span class="pill ${v.status === 'attending' ? 'attending' : v.source}">${v.status === 'attending' ? 'serving' : v.source}</span>
+      </div>`).join('');
+    list.querySelectorAll('.rx-item').forEach(it => it.addEventListener('click', () => selectVisit(it.dataset.id, data)));
+  }
+
+  async function selectVisit(id, data) {
+    selectedVisitId = id;
+    const v = (data || []).find(x => x.id === id);
+    await sb.rpc('set_attending', { p_visit_id: id });
+    loadQueue();
+    renderConsult(v);
+  }
+
+  function makeMedRow(med = {}) {
+    const div = document.createElement('div');
+    div.className = 'med-row';
+    div.innerHTML = `
+      <div><label>Medicine</label><input class="m-name" placeholder="e.g. Paracetamol" value="${escapeHtml(med.name||'')}"></div>
+      <div><label>Dosage</label><input class="m-dosage" placeholder="500mg" value="${escapeHtml(med.dosage||'')}"></div>
+      <div><label>Frequency</label><input class="m-freq" placeholder="Twice daily" value="${escapeHtml(med.frequency||'')}"></div>
+      <div><label>Duration</label><input class="m-dur" placeholder="5 days" value="${escapeHtml(med.duration||'')}"></div>
+      <div><label>Qty</label><input class="m-qty" type="number" min="0" placeholder="10" value="${escapeHtml(med.quantity||'')}"></div>
+      <div><label>Instructions</label><input class="m-inst" placeholder="After food" value="${escapeHtml(med.instructions||'')}"></div>
+      <div><button class="danger" type="button">✕</button></div>`;
+    div.querySelector('button.danger').addEventListener('click', () => div.remove());
+    return div;
+  }
+
+  async function renderConsult(v) {
+    const p = v.patients || {};
+    const detail = $('dq-detail');
+    detail.innerHTML = `
+      <div class="card">
+        <h2>Consultation — Token #${v.token_number}</h2>
+        <div class="grid">
+          <div><label>Patient</label><input value="${escapeHtml(p.name||'')}" disabled></div>
+          <div><label>Phone</label><input value="${escapeHtml(p.phone||'')}" disabled></div>
+          <div><label>Age</label><input id="dq-age" type="number" min="0" value="${p.age ?? ''}" placeholder="Years"></div>
+        </div>
+        <div class="grid-2" style="margin-top:12px;">
+          <div><label>Gender</label>
+            <select id="dq-gender">
+              <option value="">Select</option>
+              <option ${p.gender==='Male'?'selected':''}>Male</option>
+              <option ${p.gender==='Female'?'selected':''}>Female</option>
+              <option ${p.gender==='Other'?'selected':''}>Other</option>
+            </select></div>
+          <div></div>
+        </div>
+        <div style="margin-top:14px;"><label>Notes / Diagnosis</label><textarea id="dq-notes" placeholder="Symptoms, diagnosis, advice…"></textarea></div>
+      </div>
+
+      <div class="card">
+        <h2>Previous Visits</h2>
+        <div class="hist" id="dq-history"><div class="empty">Loading history…</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Medicines</h2>
+        <div id="med-rows"></div>
+        <div class="actions"><button class="secondary" id="add-med-btn">+ Add Medicine</button></div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" id="save-rx-btn">💾 Save Prescription &amp; mark seen</button>
+        <button class="danger" id="noshow-btn" style="padding:11px 18px;">Mark No-show</button>
+      </div>`;
+
+    $('med-rows').appendChild(makeMedRow());
+    $('add-med-btn').addEventListener('click', () => $('med-rows').appendChild(makeMedRow()));
+    $('save-rx-btn').addEventListener('click', () => saveConsult(v));
+    $('noshow-btn').addEventListener('click', async () => {
+      if (!confirm('Mark this patient as no-show?')) return;
+      await sb.rpc('set_status', { p_visit_id: v.id, p_status: 'noshow' });
+      selectedVisitId = null; detail.innerHTML = '<div class="card"><div class="empty">Select a patient from the queue.</div></div>';
+      loadQueue(); toast('Marked no-show');
+    });
+    loadHistory(v);
+  }
+
+  async function loadHistory(v) {
+    const phone = v.patients?.phone;
+    const el = $('dq-history');
+    const { data, error } = await sb.from('prescriptions')
+      .select('created_at,doctor_name,notes,medicines,patients!inner(phone)')
+      .eq('patients.phone', phone).order('created_at', { ascending: false }).limit(10);
+    if (error) { el.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
+    if (!data.length) { el.innerHTML = '<div class="empty">First visit — no previous prescriptions.</div>'; return; }
+    el.innerHTML = data.map(rx => `
+      <details class="hist-item">
+        <summary>${formatDate(rx.created_at)} · ${escapeHtml(rx.doctor_name||'')} · ${rx.medicines.length} medicine${rx.medicines.length===1?'':'s'}</summary>
+        ${rx.notes ? `<div class="hist-note" style="margin-top:8px;">${escapeHtml(rx.notes)}</div>` : ''}
+        <div class="h-meds">${rx.medicines.map(m => `• <strong>${escapeHtml(m.name)}</strong> ${escapeHtml(m.dosage||'')} — ${escapeHtml(m.frequency||'')}, ${escapeHtml(m.duration||'')} ${m.instructions?('('+escapeHtml(m.instructions)+')'):''}`).join('<br>')}</div>
+      </details>`).join('');
+  }
+
+  async function saveConsult(v) {
+    const meds = Array.from(document.querySelectorAll('#med-rows .med-row')).map(r => ({
+      name: r.querySelector('.m-name').value.trim(),
+      dosage: r.querySelector('.m-dosage').value.trim(),
+      frequency: r.querySelector('.m-freq').value.trim(),
+      duration: r.querySelector('.m-dur').value.trim(),
+      quantity: r.querySelector('.m-qty').value.trim(),
+      instructions: r.querySelector('.m-inst').value.trim(),
+    })).filter(m => m.name);
+    if (meds.length === 0 && !confirm('No medicines added. Save prescription anyway and mark the patient as seen?')) return;
+
+    $('save-rx-btn').disabled = true;
+    const { error } = await sb.rpc('save_prescription', {
+      p_visit_id: v.id,
+      p_doctor_name: staffProfile.name,
+      p_notes: $('dq-notes').value.trim(),
+      p_medicines: meds,
+      p_age: $('dq-age').value ? parseInt($('dq-age').value, 10) : null,
+      p_gender: $('dq-gender').value || null,
+    });
+    $('save-rx-btn').disabled = false;
+    if (error) { toast('Save failed: ' + error.message, '#ef4444'); return; }
+    selectedVisitId = null;
+    $('dq-detail').innerHTML = '<div class="card"><div class="empty">Saved ✔ — select the next patient.</div></div>';
+    loadQueue();
+    toast('Prescription saved · patient marked seen');
+  }
+
+  /* ====================== PHARMACIST: prescriptions from DB ====================== */
+  let selectedRx = null;
+  async function loadPrescriptions() {
+    const { data, error } = await sb.from('prescriptions')
+      .select('id,created_at,doctor_name,notes,medicines,patients(name,phone,age,gender),visits(token_number)')
+      .order('created_at', { ascending: false }).limit(100);
+    const list = $('rx-list'), detail = $('rx-detail');
+    if (error) { list.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
+    if (!data.length) { list.innerHTML = '<div class="empty">No prescriptions yet</div>'; detail.innerHTML = '<div class="card"><div class="empty">Saved prescriptions appear here</div></div>'; return; }
+    list.innerHTML = data.map(rx => `
+      <div class="rx-item ${rx.id===selectedRx?'selected':''}" data-id="${rx.id}">
+        <div style="flex:1;min-width:0;">
+          <div class="name">${escapeHtml(rx.patients?.name||'—')}</div>
+          <div class="meta">${formatDate(rx.created_at)} • ${rx.medicines.length} medicine${rx.medicines.length===1?'':'s'}</div>
+        </div>
+      </div>`).join('');
+    list.querySelectorAll('.rx-item').forEach(it => it.addEventListener('click', () => { selectedRx = it.dataset.id; loadPrescriptions(); renderRxDetail(data.find(r=>r.id===it.dataset.id)); }));
+    if (!selectedRx || !data.find(r => r.id === selectedRx)) selectedRx = data[0].id;
+    renderRxDetail(data.find(r => r.id === selectedRx));
+  }
+
+  function renderRxDetail(rx) {
+    const el = $('rx-detail');
+    if (!rx) { el.innerHTML = '<div class="card"><div class="empty">Select a prescription</div></div>'; return; }
+    const p = rx.patients || {};
+    el.innerHTML = `
+      <div id="print-area"><div class="card">
+        <div style="text-align:center; padding:4px 0 16px; margin-bottom:18px; border-bottom:2px dashed var(--teal);">
+          <div style="font-size:24px; font-weight:800; color:var(--teal-dark);">${escapeHtml(CLINIC.name)}</div>
+          <div style="font-size:12px; color:#374151; margin-top:6px;">${escapeHtml(CLINIC.address)}</div>
+          <div style="font-size:12px; color:var(--coral); font-weight:700; margin-top:2px;">Phone: ${escapeHtml(CLINIC.phone)} · ${escapeHtml(CLINIC.website)}</div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
+          <h2 style="margin:0;">Prescription</h2>
+          <div class="no-print actions" style="margin:0;">
+            <button class="secondary" id="print-btn">Print</button>
+            <button class="primary" id="csv-btn">Save for ERP (CSV)</button>
+          </div>
+        </div>
+        <div class="info-row">
+          <div><div class="label-sm">Patient</div><div class="val">${escapeHtml(p.name||'-')}</div></div>
+          <div><div class="label-sm">Phone</div><div class="val">${escapeHtml(p.phone||'-')}</div></div>
+          <div><div class="label-sm">Age / Gender</div><div class="val">${escapeHtml(p.age ?? '-')} / ${escapeHtml(p.gender||'-')}</div></div>
+          <div><div class="label-sm">Token</div><div class="val">#${rx.visits?.token_number ?? '-'}</div></div>
+          <div><div class="label-sm">Doctor</div><div class="val">${escapeHtml(rx.doctor_name||'-')}</div></div>
+          <div><div class="label-sm">Date</div><div class="val">${formatDate(rx.created_at)}</div></div>
+        </div>
+        ${rx.notes ? `<div style="margin-bottom:16px;"><div class="label-sm">Notes</div><div>${escapeHtml(rx.notes)}</div></div>` : ''}
+        ${rx.medicines.length === 0 ? '<div class="empty">No medicines</div>' : `
+        <table><thead><tr><th>Medicine</th><th>Dosage</th><th>Frequency</th><th>Duration</th><th>Qty</th><th>Instructions</th></tr></thead>
+        <tbody>${rx.medicines.map(m => `<tr><td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.dosage||'-')}</td><td>${escapeHtml(m.frequency||'-')}</td><td>${escapeHtml(m.duration||'-')}</td><td>${escapeHtml(m.quantity||'-')}</td><td>${escapeHtml(m.instructions||'-')}</td></tr>`).join('')}</tbody></table>`}
+      </div></div>`;
+    const pb = $('print-btn'); if (pb) pb.addEventListener('click', () => window.print());
+    const cb = $('csv-btn'); if (cb) cb.addEventListener('click', () => exportCsv(rx));
+  }
+
+  function csvCell(v) { const s = (v == null ? '' : String(v)); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  function exportCsv(rx) {
+    if (!rx.medicines.length) { toast('No medicines to export', '#ef4444'); return; }
+    const headers = ['prescription_id','date','patient_name','phone','medicine_name','dosage','frequency','duration','quantity','instructions'];
+    const rows = rx.medicines.map(m => [rx.id, formatDate(rx.created_at), rx.patients?.name, rx.patients?.phone, m.name, m.dosage, m.frequency, m.duration, m.quantity, m.instructions]);
+    const csv = [headers, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `prescription-${rx.id}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+    toast('CSV downloaded');
+  }
+
+  /* ====================== LAB / PATIENT (browser-local, unchanged) ====================== */
   function loadLab() {
-    let data;
-    try { data = JSON.parse(localStorage.getItem(LAB_KEY)) || []; } catch { data = []; }
-    const now = Date.now();
-    const fresh = data.filter(t => t.expiresAt > now);
+    let data; try { data = JSON.parse(localStorage.getItem(LAB_KEY)) || []; } catch { data = []; }
+    const now = Date.now(); const fresh = data.filter(t => t.expiresAt > now);
     if (fresh.length !== data.length) saveLab(fresh);
     return fresh;
   }
-  function saveLab(data) { localStorage.setItem(LAB_KEY, JSON.stringify(data)); }
-
+  function saveLab(d) { localStorage.setItem(LAB_KEY, JSON.stringify(d)); }
   function genCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const existing = new Set(loadLab().map(t => t.code));
-    for (let i = 0; i < 50; i++) {
-      let c = '';
-      for (let j = 0; j < 6; j++) c += chars[Math.floor(Math.random() * chars.length)];
-      if (!existing.has(c)) return c;
-    }
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const existing = new Set(loadLab().map(t => t.code));
+    for (let i = 0; i < 50; i++) { let c = ''; for (let j = 0; j < 6; j++) c += chars[Math.floor(Math.random()*chars.length)]; if (!existing.has(c)) return c; }
     return 'X' + Date.now().toString(36).toUpperCase().slice(-5);
   }
-
-  function readFileAsDataURL(file) {
-    return new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res(r.result);
-      r.onerror = rej;
-      r.readAsDataURL(file);
-    });
-  }
-
-  /* Staged files accumulator (so multiple separate picks add up) */
+  function readFileAsDataURL(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); }); }
   let stagedFiles = [];
-  const stagedEl = document.getElementById('lab-staged');
-  const filesInput = document.getElementById('lab-files');
-
   function renderStaged() {
-    if (stagedFiles.length === 0) { stagedEl.innerHTML = ''; return; }
-    stagedEl.innerHTML = stagedFiles.map((f, i) => `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--teal-bg); border: 1px solid var(--teal-soft); border-radius: 10px; font-size: 13px;">
-        <span>📄 ${escapeHtml(f.name)} <span style="color: var(--muted);">(${formatBytes(f.size)})</span></span>
-        <button type="button" class="danger" data-i="${i}">Remove</button>
-      </div>
-    `).join('');
-    stagedEl.querySelectorAll('button.danger').forEach(b => {
-      b.addEventListener('click', () => {
-        stagedFiles.splice(parseInt(b.dataset.i, 10), 1);
-        renderStaged();
-      });
-    });
+    const el = $('lab-staged');
+    if (!stagedFiles.length) { el.innerHTML = ''; return; }
+    el.innerHTML = stagedFiles.map((f, i) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--teal-bg); border:1px solid var(--teal-soft); border-radius:10px; font-size:13px;"><span>📄 ${escapeHtml(f.name)} <span style="color:var(--muted);">(${formatBytes(f.size)})</span></span><button type="button" class="danger" data-i="${i}">Remove</button></div>`).join('');
+    el.querySelectorAll('button.danger').forEach(b => b.addEventListener('click', () => { stagedFiles.splice(parseInt(b.dataset.i,10),1); renderStaged(); }));
   }
-
-  document.getElementById('lab-pick-btn').addEventListener('click', () => filesInput.click());
-  filesInput.addEventListener('change', () => {
-    const picked = Array.from(filesInput.files || []);
-    picked.forEach(f => {
-      if (!stagedFiles.some(s => s.name === f.name && s.size === f.size)) stagedFiles.push(f);
-    });
-    filesInput.value = ''; // reset so picking the same file again works
-    renderStaged();
-  });
-
-  document.getElementById('lab-upload-btn').addEventListener('click', async () => {
-    const patient = document.getElementById('lab-patient').value.trim();
-    const testName = document.getElementById('lab-test').value.trim();
-
-    if (!patient) { toast('Patient name required', '#ef4444'); return; }
-    if (!testName) { toast('Test name required', '#ef4444'); return; }
-    if (stagedFiles.length === 0) { toast('Add at least one file', '#ef4444'); return; }
-
-    const totalSize = stagedFiles.reduce((s, f) => s + f.size, 0);
-    if (totalSize > 4 * 1024 * 1024) {
-      if (!confirm('Files are larger than ~4MB. Browser storage may reject. Continue?')) return;
-    }
-
-    const fileData = [];
-    for (const f of stagedFiles) {
-      try {
-        fileData.push({ name: f.name, type: f.type, size: f.size, dataUrl: await readFileAsDataURL(f) });
-      } catch {
-        toast('Could not read ' + f.name, '#ef4444');
-        return;
-      }
-    }
-
-    const now = Date.now();
-    const entry = {
-      code: genCode(),
-      patient,
-      testName,
-      uploadedAt: now,
-      expiresAt: now + EXPIRY_MS,
-      files: fileData,
-    };
-
-    const all = loadLab();
-    all.push(entry);
-    try {
-      saveLab(all);
-    } catch (e) {
-      toast('Storage full — try smaller files', '#ef4444');
-      return;
-    }
-
-    document.getElementById('lab-patient').value = '';
-    document.getElementById('lab-test').value = '';
-    stagedFiles = [];
-    renderStaged();
-    toast('Uploaded · code ' + entry.code);
-    renderLab(entry.code);
-  });
-
   function renderLab(highlightCode) {
-    const list = document.getElementById('lab-list');
-    const all = loadLab().slice().sort((a, b) => b.uploadedAt - a.uploadedAt);
-    if (all.length === 0) {
-      list.innerHTML = '<div class="empty">No tests uploaded yet.</div>';
-      return;
-    }
-    list.innerHTML = `
-      <table>
-        <thead><tr><th>Code</th><th>Patient</th><th>Test</th><th>Uploaded</th><th>Expires</th><th>Files</th><th></th></tr></thead>
-        <tbody>
-          ${all.map(t => `
-            <tr ${t.code === highlightCode ? 'style="background: var(--coral-soft);"' : ''}>
-              <td><span style="font-family: monospace; font-weight: 800; font-size: 15px; letter-spacing: 1.5px; color: var(--teal-dark);">${t.code}</span></td>
-              <td>${escapeHtml(t.patient)}</td>
-              <td>${escapeHtml(t.testName)}</td>
-              <td>${formatDateTime(t.uploadedAt)}</td>
-              <td>${expiryLabel(t.expiresAt)}</td>
-              <td>${t.files.length}</td>
-              <td><button class="danger" data-code="${t.code}">Delete</button></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-    list.querySelectorAll('button.danger').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (!confirm('Delete this test upload? Patient will no longer be able to download.')) return;
-        saveLab(loadLab().filter(t => t.code !== btn.dataset.code));
-        toast('Deleted');
-        renderLab();
-      });
-    });
+    const list = $('lab-list'); const all = loadLab().slice().sort((a,b) => b.uploadedAt - a.uploadedAt);
+    if (!all.length) { list.innerHTML = '<div class="empty">No tests uploaded yet.</div>'; return; }
+    list.innerHTML = `<table><thead><tr><th>Code</th><th>Patient</th><th>Test</th><th>Uploaded</th><th>Expires</th><th>Files</th><th></th></tr></thead><tbody>${all.map(t => `<tr ${t.code===highlightCode?'style="background:var(--coral-soft);"':''}><td><span style="font-family:monospace; font-weight:800; font-size:15px; letter-spacing:1.5px; color:var(--teal-dark);">${t.code}</span></td><td>${escapeHtml(t.patient)}</td><td>${escapeHtml(t.testName)}</td><td>${formatDateTime(t.uploadedAt)}</td><td>${expiryLabel(t.expiresAt)}</td><td>${t.files.length}</td><td><button class="danger" data-code="${t.code}">Delete</button></td></tr>`).join('')}</tbody></table>`;
+    list.querySelectorAll('button.danger').forEach(btn => btn.addEventListener('click', () => { if (!confirm('Delete this test upload?')) return; saveLab(loadLab().filter(t => t.code !== btn.dataset.code)); toast('Deleted'); renderLab(); }));
   }
+  function expiryLabel(ts) { const ms = ts - Date.now(); if (ms <= 0) return 'Expired'; const hrs = Math.floor(ms/3600000); return hrs >= 24 ? `${Math.floor(hrs/24)}d ${hrs%24}h left` : `${hrs}h left`; }
 
-  function expiryLabel(ts) {
-    const ms = ts - Date.now();
-    if (ms <= 0) return 'Expired';
-    const hrs = Math.floor(ms / (60 * 60 * 1000));
-    if (hrs >= 24) return `${Math.floor(hrs / 24)}d ${hrs % 24}h left`;
-    return `${hrs}h left`;
-  }
-
-  function formatDateTime(ts) {
-    return new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-  }
-
-  /* ---------- PATIENT DOWNLOAD ---------- */
-  document.getElementById('patient-fetch-btn').addEventListener('click', () => {
-    const codeInput = document.getElementById('patient-code');
-    const code = codeInput.value.trim().toUpperCase();
-    const resultEl = document.getElementById('patient-result');
-    if (!code) { toast('Enter a code', '#ef4444'); return; }
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'lab-pick-btn') $('lab-files').click();
+  });
+  document.addEventListener('change', (e) => {
+    if (e.target.id !== 'lab-files') return;
+    Array.from(e.target.files || []).forEach(f => { if (!stagedFiles.some(s => s.name===f.name && s.size===f.size)) stagedFiles.push(f); });
+    e.target.value = ''; renderStaged();
+  });
+  document.addEventListener('click', async (e) => {
+    if (e.target.id !== 'lab-upload-btn') return;
+    const patient = $('lab-patient').value.trim(), testName = $('lab-test').value.trim();
+    if (!patient) return toast('Patient name required', '#ef4444');
+    if (!testName) return toast('Test name required', '#ef4444');
+    if (!stagedFiles.length) return toast('Add at least one file', '#ef4444');
+    const fileData = [];
+    for (const f of stagedFiles) { try { fileData.push({ name: f.name, type: f.type, size: f.size, dataUrl: await readFileAsDataURL(f) }); } catch { return toast('Could not read ' + f.name, '#ef4444'); } }
+    const now = Date.now();
+    const entry = { code: genCode(), patient, testName, uploadedAt: now, expiresAt: now + EXPIRY_MS, files: fileData };
+    const all = loadLab(); all.push(entry);
+    try { saveLab(all); } catch { return toast('Storage full — try smaller files', '#ef4444'); }
+    $('lab-patient').value = ''; $('lab-test').value = ''; stagedFiles = []; renderStaged();
+    toast('Uploaded · code ' + entry.code); renderLab(entry.code);
+  });
+  document.addEventListener('click', (e) => {
+    if (e.target.id !== 'patient-fetch-btn') return;
+    const code = $('patient-code').value.trim().toUpperCase(); const resultEl = $('patient-result');
+    if (!code) return toast('Enter a code', '#ef4444');
     const entry = loadLab().find(t => t.code === code);
-    if (!entry) {
-      resultEl.innerHTML = `<div style="padding: 14px; background: var(--coral-soft); border-radius: 12px; color: #c2410c; font-weight: 700; text-align: center;">Invalid or expired code. Please contact the lab.</div>`;
-      return;
-    }
-    resultEl.innerHTML = `
-      <div style="padding: 16px; background: var(--teal-bg); border: 1px solid var(--teal-soft); border-radius: 12px;">
-        <div style="font-size: 12px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Patient</div>
-        <div style="font-weight: 700; margin-bottom: 8px;">${escapeHtml(entry.patient)}</div>
-        <div style="font-size: 12px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">Test</div>
-        <div style="font-weight: 700; margin-bottom: 8px;">${escapeHtml(entry.testName)}</div>
-        <div style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">Uploaded ${formatDateTime(entry.uploadedAt)} · ${expiryLabel(entry.expiresAt)}</div>
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          ${entry.files.map((f, i) => `
-            <a href="${f.dataUrl}" download="${escapeHtml(f.name)}" class="secondary" style="text-decoration: none; padding: 10px 16px; display: inline-block; text-align: center;">
-              ⬇ Download ${escapeHtml(f.name)} <span style="color: var(--muted); font-weight: 500;">(${formatBytes(f.size)})</span>
-            </a>
-          `).join('')}
-        </div>
-      </div>
-    `;
+    if (!entry) { resultEl.innerHTML = `<div style="padding:14px; background:var(--coral-soft); border-radius:12px; color:#c2410c; font-weight:700; text-align:center;">Invalid or expired code.</div>`; return; }
+    resultEl.innerHTML = `<div style="padding:16px; background:var(--teal-bg); border:1px solid var(--teal-soft); border-radius:12px;"><div class="label-sm">Patient</div><div style="font-weight:700; margin-bottom:8px;">${escapeHtml(entry.patient)}</div><div class="label-sm">Test</div><div style="font-weight:700; margin-bottom:8px;">${escapeHtml(entry.testName)}</div><div style="font-size:12px; color:var(--muted); margin-bottom:12px;">Uploaded ${formatDateTime(entry.uploadedAt)} · ${expiryLabel(entry.expiresAt)}</div><div style="display:flex; flex-direction:column; gap:8px;">${entry.files.map(f => `<a href="${f.dataUrl}" download="${escapeHtml(f.name)}" class="secondary" style="text-decoration:none; padding:10px 16px; text-align:center;">⬇ Download ${escapeHtml(f.name)} <span style="color:var(--muted); font-weight:500;">(${formatBytes(f.size)})</span></a>`).join('')}</div></div>`;
   });
-
-  document.getElementById('patient-code').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('patient-fetch-btn').click();
-  });
-
-  function formatBytes(b) {
-    if (b < 1024) return b + ' B';
-    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
-    return (b / (1024 * 1024)).toFixed(2) + ' MB';
-  }
+  document.addEventListener('keydown', (e) => { if (e.target.id === 'patient-code' && e.key === 'Enter') $('patient-fetch-btn').click(); });
 
   /* init */
-  initDoctorProfile();
-  resetForm();
-  loadLab(); // triggers auto-prune of expired
+  boot();
 </script>
 </body>
 </html>

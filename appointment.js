@@ -197,7 +197,7 @@ async function submitForm() {
   errEl.classList.add('hidden');
 
   if (!name) { errEl.textContent = 'Please enter the patient name.'; errEl.classList.remove('hidden'); return; }
-  if (phone.replace(/\D/g, '').length < 7) { errEl.textContent = 'Please enter a valid phone number.'; errEl.classList.remove('hidden'); return; }
+  if (phone.replace(/\D/g, '').length !== 10) { errEl.textContent = 'Please enter a 10-digit mobile number.'; errEl.classList.remove('hidden'); return; }
 
   $('book-btn').disabled = true;
   show('loading');
@@ -260,6 +260,8 @@ async function init() {
 
 // ---- wire up
 $('book-btn').addEventListener('click', submitForm);
+// Restrict the phone field to digits only, max 10.
+$('f-phone').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); });
 $('f-phone').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitForm(); });
 $('add-another-btn').addEventListener('click', () => showForm({ adding: true }));
 $('retry-btn').addEventListener('click', () => { const s = loadSaved(); if (s) renderTicket(s.patients); else init(); });
