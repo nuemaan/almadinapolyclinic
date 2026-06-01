@@ -600,67 +600,99 @@
     toast('CSV downloaded');
   }
 
-  /* ====================== LAB / PATIENT (browser-local, unchanged) ====================== */
-  function loadLab() {
-    let data; try { data = JSON.parse(localStorage.getItem(LAB_KEY)) || []; } catch { data = []; }
-    const now = Date.now(); const fresh = data.filter(t => t.expiresAt > now);
-    if (fresh.length !== data.length) saveLab(fresh);
-    return fresh;
-  }
-  function saveLab(d) { localStorage.setItem(LAB_KEY, JSON.stringify(d)); }
-  function genCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const existing = new Set(loadLab().map(t => t.code));
-    for (let i = 0; i < 50; i++) { let c = ''; for (let j = 0; j < 6; j++) c += chars[Math.floor(Math.random()*chars.length)]; if (!existing.has(c)) return c; }
-    return 'X' + Date.now().toString(36).toUpperCase().slice(-5);
-  }
-  function readFileAsDataURL(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); }); }
+  /* ====================== LAB (Supabase Storage + lab_tests) ====================== */
+  const LAB_BUCKET = 'lab-reports';
+  const EXPIRY_SEC = Math.floor(EXPIRY_MS / 1000);
   let stagedFiles = [];
+
   function renderStaged() {
     const el = $('lab-staged');
     if (!stagedFiles.length) { el.innerHTML = ''; return; }
     el.innerHTML = stagedFiles.map((f, i) => `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--teal-bg); border:1px solid var(--teal-soft); border-radius:10px; font-size:13px;"><span>📄 ${escapeHtml(f.name)} <span style="color:var(--muted);">(${formatBytes(f.size)})</span></span><button type="button" class="danger" data-i="${i}">Remove</button></div>`).join('');
     el.querySelectorAll('button.danger').forEach(b => b.addEventListener('click', () => { stagedFiles.splice(parseInt(b.dataset.i,10),1); renderStaged(); }));
   }
-  function renderLab(highlightCode) {
-    const list = $('lab-list'); const all = loadLab().slice().sort((a,b) => b.uploadedAt - a.uploadedAt);
-    if (!all.length) { list.innerHTML = '<div class="empty">No tests uploaded yet.</div>'; return; }
-    list.innerHTML = `<table><thead><tr><th>Code</th><th>Patient</th><th>Test</th><th>Uploaded</th><th>Expires</th><th>Files</th><th></th></tr></thead><tbody>${all.map(t => `<tr ${t.code===highlightCode?'style="background:var(--coral-soft);"':''}><td><span style="font-family:monospace; font-weight:800; font-size:15px; letter-spacing:1.5px; color:var(--teal-dark);">${t.code}</span></td><td>${escapeHtml(t.patient)}</td><td>${escapeHtml(t.testName)}</td><td>${formatDateTime(t.uploadedAt)}</td><td>${expiryLabel(t.expiresAt)}</td><td>${t.files.length}</td><td><button class="danger" data-code="${t.code}">Delete</button></td></tr>`).join('')}</tbody></table>`;
-    list.querySelectorAll('button.danger').forEach(btn => btn.addEventListener('click', () => { if (!confirm('Delete this test upload?')) return; saveLab(loadLab().filter(t => t.code !== btn.dataset.code)); toast('Deleted'); renderLab(); }));
-  }
-  function expiryLabel(ts) { const ms = ts - Date.now(); if (ms <= 0) return 'Expired'; const hrs = Math.floor(ms/3600000); return hrs >= 24 ? `${Math.floor(hrs/24)}d ${hrs%24}h left` : `${hrs}h left`; }
+  function randCode() { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for (let i=0;i<6;i++) s+=c[Math.floor(Math.random()*c.length)]; return s; }
+  function expiryLabel(iso) { const ms = new Date(iso).getTime() - Date.now(); if (ms <= 0) return 'Expired'; const hrs = Math.floor(ms/3600000); return hrs >= 24 ? `${Math.floor(hrs/24)}d ${hrs%24}h left` : `${hrs}h left`; }
 
-  document.addEventListener('click', (e) => {
-    if (e.target.id === 'lab-pick-btn') $('lab-files').click();
-  });
+  async function pruneExpired(rows) {
+    for (const t of rows) {
+      try { if (t.files?.length) await sb.storage.from(LAB_BUCKET).remove(t.files.map(f => f.path)); } catch {}
+      await sb.from('lab_tests').delete().eq('code', t.code);
+    }
+  }
+  async function renderLab(highlightCode) {
+    const list = $('lab-list');
+    const { data, error } = await sb.from('lab_tests')
+      .select('code,patient_name,test_name,files,uploaded_at,expires_at')
+      .order('uploaded_at', { ascending: false }).limit(100);
+    if (error) { list.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
+    const now = Date.now();
+    const expired = data.filter(t => new Date(t.expires_at).getTime() <= now);
+    if (expired.length) pruneExpired(expired);
+    const fresh = data.filter(t => new Date(t.expires_at).getTime() > now);
+    if (!fresh.length) { list.innerHTML = '<div class="empty">No tests uploaded yet.</div>'; return; }
+    list.innerHTML = `<table><thead><tr><th>Code</th><th>Patient</th><th>Test</th><th>Uploaded</th><th>Expires</th><th>Files</th><th></th></tr></thead><tbody>${fresh.map(t => `<tr ${t.code===highlightCode?'style="background:var(--coral-soft);"':''}><td><span style="font-family:monospace; font-weight:800; font-size:15px; letter-spacing:1.5px; color:var(--teal-dark);">${t.code}</span></td><td>${escapeHtml(t.patient_name)}</td><td>${escapeHtml(t.test_name)}</td><td>${formatDateTime(t.uploaded_at)}</td><td>${expiryLabel(t.expires_at)}</td><td>${t.files.length}</td><td><button class="danger" data-code="${t.code}">Delete</button></td></tr>`).join('')}</tbody></table>`;
+    list.querySelectorAll('button.danger').forEach(btn => btn.addEventListener('click', () => deleteLab(btn.dataset.code)));
+  }
+  async function deleteLab(code) {
+    if (!confirm('Delete this test upload? The patient will no longer be able to download.')) return;
+    const { data } = await sb.from('lab_tests').select('files').eq('code', code).single();
+    if (data?.files?.length) { try { await sb.storage.from(LAB_BUCKET).remove(data.files.map(f => f.path)); } catch {} }
+    await sb.from('lab_tests').delete().eq('code', code);
+    toast('Deleted'); renderLab();
+  }
+  async function uploadLab() {
+    const patient = $('lab-patient').value.trim(), testName = $('lab-test').value.trim();
+    if (!patient) return toast('Patient name required', '#ef4444');
+    if (!testName) return toast('Test name required', '#ef4444');
+    if (!stagedFiles.length) return toast('Add at least one file', '#ef4444');
+    $('lab-upload-btn').disabled = true;
+    try {
+      const prefix = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      const files = [];
+      for (const f of stagedFiles) {
+        const safe = f.name.replace(/[^\w.\-]+/g, '_');
+        const path = `${prefix}/${safe}`;
+        const up = await sb.storage.from(LAB_BUCKET).upload(path, f, { contentType: f.type || 'application/octet-stream', upsert: false });
+        if (up.error) throw up.error;
+        const signed = await sb.storage.from(LAB_BUCKET).createSignedUrl(path, EXPIRY_SEC, { download: f.name });
+        if (signed.error) throw signed.error;
+        files.push({ name: f.name, size: f.size, type: f.type, path, url: signed.data.signedUrl });
+      }
+      const expires_at = new Date(Date.now() + EXPIRY_MS).toISOString();
+      let code, ok = false, tries = 0;
+      while (!ok && tries < 6) {
+        code = randCode(); tries++;
+        const { error } = await sb.from('lab_tests').insert({ code, patient_name: patient, test_name: testName, files, expires_at });
+        if (!error) ok = true;
+        else if (!String(error.message).toLowerCase().includes('duplicate')) throw error;
+      }
+      if (!ok) throw new Error('Could not allocate a code, try again');
+      $('lab-patient').value = ''; $('lab-test').value = ''; stagedFiles = []; renderStaged();
+      toast('Uploaded · code ' + code); renderLab(code);
+    } catch (e) {
+      console.error(e); toast('Upload failed: ' + (e.message || e), '#ef4444');
+    } finally { $('lab-upload-btn').disabled = false; }
+  }
+
+  /* Patient lookup tab (staff-side; patients use the public report.html page) */
+  async function patientFetch() {
+    const code = $('patient-code').value.trim().toUpperCase(); const resultEl = $('patient-result');
+    if (!code) return toast('Enter a code', '#ef4444');
+    const { data, error } = await sb.rpc('get_lab_by_code', { p_code: code });
+    if (error || !data) { resultEl.innerHTML = `<div style="padding:14px; background:var(--coral-soft); border-radius:12px; color:#c2410c; font-weight:700; text-align:center;">Invalid or expired code.</div>`; return; }
+    resultEl.innerHTML = `<div style="padding:16px; background:var(--teal-bg); border:1px solid var(--teal-soft); border-radius:12px;"><div class="label-sm">Patient</div><div style="font-weight:700; margin-bottom:8px;">${escapeHtml(data.patient_name)}</div><div class="label-sm">Test</div><div style="font-weight:700; margin-bottom:8px;">${escapeHtml(data.test_name)}</div><div style="font-size:12px; color:var(--muted); margin-bottom:12px;">Uploaded ${formatDateTime(data.uploaded_at)} · ${expiryLabel(data.expires_at)}</div><div style="display:flex; flex-direction:column; gap:8px;">${data.files.map(f => `<a href="${f.url}" target="_blank" rel="noopener" class="secondary" style="text-decoration:none; padding:10px 16px; text-align:center;">⬇ Download ${escapeHtml(f.name)} <span style="color:var(--muted); font-weight:500;">(${formatBytes(f.size)})</span></a>`).join('')}</div></div>`;
+  }
+
+  document.addEventListener('click', (e) => { if (e.target.id === 'lab-pick-btn') $('lab-files').click(); });
   document.addEventListener('change', (e) => {
     if (e.target.id !== 'lab-files') return;
     Array.from(e.target.files || []).forEach(f => { if (!stagedFiles.some(s => s.name===f.name && s.size===f.size)) stagedFiles.push(f); });
     e.target.value = ''; renderStaged();
   });
-  document.addEventListener('click', async (e) => {
-    if (e.target.id !== 'lab-upload-btn') return;
-    const patient = $('lab-patient').value.trim(), testName = $('lab-test').value.trim();
-    if (!patient) return toast('Patient name required', '#ef4444');
-    if (!testName) return toast('Test name required', '#ef4444');
-    if (!stagedFiles.length) return toast('Add at least one file', '#ef4444');
-    const fileData = [];
-    for (const f of stagedFiles) { try { fileData.push({ name: f.name, type: f.type, size: f.size, dataUrl: await readFileAsDataURL(f) }); } catch { return toast('Could not read ' + f.name, '#ef4444'); } }
-    const now = Date.now();
-    const entry = { code: genCode(), patient, testName, uploadedAt: now, expiresAt: now + EXPIRY_MS, files: fileData };
-    const all = loadLab(); all.push(entry);
-    try { saveLab(all); } catch { return toast('Storage full — try smaller files', '#ef4444'); }
-    $('lab-patient').value = ''; $('lab-test').value = ''; stagedFiles = []; renderStaged();
-    toast('Uploaded · code ' + entry.code); renderLab(entry.code);
-  });
-  document.addEventListener('click', (e) => {
-    if (e.target.id !== 'patient-fetch-btn') return;
-    const code = $('patient-code').value.trim().toUpperCase(); const resultEl = $('patient-result');
-    if (!code) return toast('Enter a code', '#ef4444');
-    const entry = loadLab().find(t => t.code === code);
-    if (!entry) { resultEl.innerHTML = `<div style="padding:14px; background:var(--coral-soft); border-radius:12px; color:#c2410c; font-weight:700; text-align:center;">Invalid or expired code.</div>`; return; }
-    resultEl.innerHTML = `<div style="padding:16px; background:var(--teal-bg); border:1px solid var(--teal-soft); border-radius:12px;"><div class="label-sm">Patient</div><div style="font-weight:700; margin-bottom:8px;">${escapeHtml(entry.patient)}</div><div class="label-sm">Test</div><div style="font-weight:700; margin-bottom:8px;">${escapeHtml(entry.testName)}</div><div style="font-size:12px; color:var(--muted); margin-bottom:12px;">Uploaded ${formatDateTime(entry.uploadedAt)} · ${expiryLabel(entry.expiresAt)}</div><div style="display:flex; flex-direction:column; gap:8px;">${entry.files.map(f => `<a href="${f.dataUrl}" download="${escapeHtml(f.name)}" class="secondary" style="text-decoration:none; padding:10px 16px; text-align:center;">⬇ Download ${escapeHtml(f.name)} <span style="color:var(--muted); font-weight:500;">(${formatBytes(f.size)})</span></a>`).join('')}</div></div>`;
-  });
-  document.addEventListener('keydown', (e) => { if (e.target.id === 'patient-code' && e.key === 'Enter') $('patient-fetch-btn').click(); });
+  document.addEventListener('click', (e) => { if (e.target.id === 'lab-upload-btn') uploadLab(); });
+  document.addEventListener('click', (e) => { if (e.target.id === 'patient-fetch-btn') patientFetch(); });
+  document.addEventListener('keydown', (e) => { if (e.target.id === 'patient-code' && e.key === 'Enter') patientFetch(); });
 
   /* init */
   boot();
