@@ -1,28 +1,37 @@
-// Al Madina Polyclinic — appointment queue page
+// Al Madina Polyclinic — appointment booking page (Supabase-backed)
+//
+// Two entry modes:
+//   • HOME  — opened directly (no QR token). Allowed only inside the booking
+//             window; the database enforces this.
+//   • WALK-IN — opened by scanning the clinic QR (?t=<rotating token>). The
+//             database validates the token, so it works any time the clinic
+//             is showing the QR, and bypasses the home window.
+// Either way the patient enters name + phone and is issued a queue token from
+// one shared, self-resetting (am/pm) sequence.
 
-const COUNTER_NS = 'almadina-polyclinic';
 const STORAGE_KEY = 'almadina_appt';
 const MAX_PER_FAMILY = 3;
-const HIT_URL = (key) => `https://abacus.jasoncameron.dev/hit/${COUNTER_NS}/${key}`;
-const GET_URL = (key) => `https://abacus.jasoncameron.dev/get/${COUNTER_NS}/${key}`;
+const STATUS_POLL_MS = 8000;
 
+const sb = window.supabaseClient;
 const $ = (id) => document.getElementById(id);
 
 const states = {
+  form:    $('state-form'),
   gate:    $('state-gate'),
-  intro:   $('state-intro'),
   loading: $('state-loading'),
   ticket:  $('state-ticket'),
   error:   $('state-error'),
-  latest:  $('state-latest'),
 };
-
 function show(name) {
-  Object.entries(states).forEach(([k, el]) => el.classList.toggle('hidden', k !== name));
+  Object.entries(states).forEach(([k, el]) => el && el.classList.toggle('hidden', k !== name));
 }
 
-// Counter key — rotates at midnight AND at 3 PM so the morning and
-// evening clinic sessions each start fresh at #1.
+// QR scan token (present => walk-in mode)
+const qrToken = new URLSearchParams(location.search).get('t');
+const isWalkin = !!qrToken;
+
+// ---- session + date helpers (client display only; the DB is source of truth)
 function sessionKey() {
   const d = new Date();
   const y = d.getFullYear();
@@ -31,172 +40,229 @@ function sessionKey() {
   const session = d.getHours() < 15 ? 'am' : 'pm';
   return `${y}-${m}-${day}-${session}`;
 }
-
 function prettyDate() {
-  const d = new Date();
-  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
-
-// Mon–Sat: 9:00–10:00 AM & 5:30–8:30 PM. Sun: 10:00 AM – 1:30 PM & 6:30–8:00 PM
 function todayHours() {
-  const day = new Date().getDay(); // 0=Sun
-  if (day === 0) return '10:00 AM – 1:30 PM & 6:30–8:00 PM';
+  const day = new Date().getDay();
+  if (day === 0) return '10:00 AM–1:30 PM & 6:30–8:00 PM';
   return '9:00–10:00 AM & 5:30–8:30 PM';
 }
-
 function ordinal(n) {
   const s = ['th','st','nd','rd'], v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
-
-// --- Storage: array of numbers issued in the current session on this device ---
-function loadSaved() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    if (!data || data.session !== sessionKey()) return null;
-    if (Array.isArray(data.numbers) && data.numbers.length) return data;
-    if (Number.isInteger(data.number)) return { session: data.session, numbers: [data.number] };
-    return null;
-  } catch { return null; }
+function to12h(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const ap = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${ap}`;
 }
 
-function save(numbers) {
+// ---- local storage of this device's tokens for the current session
+function loadSaved() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ session: sessionKey(), numbers }));
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (data && data.session === sessionKey() && Array.isArray(data.patients) && data.patients.length) return data;
+  } catch {}
+  return null;
+}
+function save(patients, phone) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ session: sessionKey(), patients, phone: phone || '' }));
   } catch {}
 }
 
-// --- Rendering ---
-function renderTicket(numbers) {
-  const numEl = $('ticket-num');
-  const numsEl = $('ticket-nums');
-  const labelEl = $('ticket-label');
-  const subEl = $('ticket-sub');
+// ---- rendering
+let statusTimer = null;
 
-  if (numbers.length === 1) {
-    numEl.textContent = '#' + numbers[0];
+function renderTicket(patients) {
+  const numEl = $('ticket-num'), numsEl = $('ticket-nums');
+  const labelEl = $('ticket-label'), subEl = $('ticket-sub');
+  const tokens = patients.map(p => p.token);
+
+  if (patients.length === 1) {
+    numEl.textContent = '#' + tokens[0];
     numEl.classList.remove('hidden');
     numsEl.classList.add('hidden');
     numsEl.innerHTML = '';
     labelEl.textContent = 'Your number';
-    subEl.textContent = `You're the ${ordinal(numbers[0])} patient in today's queue`;
+    subEl.textContent = `${patients[0].name} · ${ordinal(tokens[0])} in today's queue`;
     subEl.classList.remove('hidden');
   } else {
     numEl.classList.add('hidden');
     numsEl.classList.remove('hidden');
-    numsEl.innerHTML = numbers.map(n => `<span class="num-pill">#${n}</span>`).join('');
-    labelEl.textContent = `Your ${numbers.length} numbers`;
-    subEl.textContent = '';
-    subEl.classList.add('hidden');
+    numsEl.innerHTML = patients.map(p => `<span class="num-pill">#${p.token}</span>`).join('');
+    labelEl.textContent = `Your ${patients.length} numbers`;
+    subEl.textContent = patients.map(p => `#${p.token} ${p.name}`).join('  ·  ');
+    subEl.classList.remove('hidden');
   }
 
+  $('ticket-badge').textContent = (patients[0].source === 'home' ? 'Home booking' : 'Walk-in') + " · today's queue";
   $('ticket-date').textContent = prettyDate();
   $('ticket-hours').textContent = todayHours();
-
-  // Hide "Add another patient" once we've hit the per-device limit.
-  $('add-another-btn').classList.toggle('hidden', numbers.length >= MAX_PER_FAMILY);
+  $('add-another-btn').classList.toggle('hidden', patients.length >= MAX_PER_FAMILY);
 
   show('ticket');
+  refreshStatus(); // immediate, then on a timer
+  clearInterval(statusTimer);
+  statusTimer = setInterval(refreshStatus, STATUS_POLL_MS);
 }
 
-// --- Networking ---
-async function fetchJSON(url, { timeout = 8000 } = {}) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeout);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return await res.json();
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-async function incrementOnce() {
-  const data = await fetchJSON(HIT_URL(sessionKey()));
-  if (typeof data.value !== 'number') throw new Error('Bad response');
-  return data.value;
-}
-
-// --- Main flows ---
-async function getMyNumber() {
-  const token = new URLSearchParams(location.search).get('t');
-  if (!await window.QueueToken.isValid(token)) {
-    show('gate');
-    return;
-  }
-  show('loading');
-  try {
-    const issued = await incrementOnce();
-    save([issued]);
-    renderTicket([issued]);
-  } catch (err) {
-    console.error('Counter increment failed:', err);
-    show('error');
-  }
-}
-
-async function addAnotherPatient() {
+async function refreshStatus() {
   const saved = loadSaved();
-  if (!saved) { show('intro'); return; }
-  if (saved.numbers.length >= MAX_PER_FAMILY) return;
-  show('loading');
+  if (!saved) return;
+  // Track the earliest of this device's tokens (the one called first).
+  const primary = Math.min(...saved.patients.map(p => p.token));
   try {
-    const next = await incrementOnce();
-    const updated = [...saved.numbers, next];
-    save(updated);
-    renderTicket(updated);
-  } catch (err) {
-    console.error('Add-another failed:', err);
-    show('error');
+    const { data, error } = await sb.rpc('queue_status', { p_token: primary });
+    if (error) throw error;
+    paintStatus(data, primary);
+  } catch (e) {
+    console.warn('status poll failed', e);
   }
 }
 
-async function showLatestCount() {
+function paintStatus(s, primary) {
+  $('ts-attended').textContent = s.attended ?? 0;
+  $('ts-serving').textContent = s.now_serving != null ? '#' + s.now_serving : '—';
+
+  const etaLabel = $('ts-eta-label'), etaEl = $('ts-eta');
+  const yourStatus = s.your_status;
+
+  if (yourStatus === 'done') {
+    etaLabel.textContent = '✅ Status';
+    etaEl.textContent = 'Seen — thank you!';
+  } else if (yourStatus === 'attending') {
+    etaLabel.textContent = '🔔 Status';
+    etaEl.textContent = "It's your turn now!";
+  } else if (yourStatus === 'cancelled' || yourStatus === 'noshow') {
+    etaLabel.textContent = 'ℹ️ Status';
+    etaEl.textContent = 'Please check at reception';
+  } else if ((s.ahead ?? 0) === 0) {
+    etaLabel.textContent = '⏳ Your turn (approx.)';
+    etaEl.textContent = "You're next!";
+  } else {
+    etaLabel.textContent = `⏳ ${s.ahead} ahead · turn at approx.`;
+    const serverNow = s.server_now ? new Date(s.server_now) : new Date();
+    const turn = new Date(serverNow.getTime() + (s.eta_seconds || 0) * 1000);
+    etaEl.textContent = turn.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+  }
+}
+
+// ---- networking
+function friendlyError(err) {
+  const m = (err && (err.message || err.code) || '').toString();
+  if (m.includes('WINDOW_CLOSED')) return '__WINDOW__';
+  if (m.includes('INVALID_SCAN'))  return 'That QR code has expired. Please re-scan the code at the clinic.';
+  if (m.includes('NAME_REQUIRED')) return 'Please enter the patient name.';
+  if (m.includes('PHONE_INVALID')) return 'Please enter a valid phone number.';
+  return null; // unknown -> generic error screen
+}
+
+async function bookOne(name, phone) {
+  const { data, error } = await sb.rpc('take_token', {
+    p_name: name,
+    p_phone: phone,
+    p_source: isWalkin ? 'walkin' : 'home',
+    p_qr_token: qrToken,
+  });
+  if (error) throw error;
+  return data; // a visits row
+}
+
+// ---- flows
+let addingMore = false;
+
+function showForm({ adding = false } = {}) {
+  addingMore = adding;
+  const saved = loadSaved();
+  $('today-label').textContent = prettyDate();
+  $('form-hours').textContent = todayHours();
+  $('form-eyebrow').textContent = isWalkin ? '✦ Walk-in queue' : '✦ Book appointment';
+  $('form-title').innerHTML = adding
+    ? 'Add another <span class="grad">patient</span> 🧒'
+    : (isWalkin ? "Get your <span class=\"grad\">queue number</span> 🎟️" : 'Book your <span class="grad">appointment</span> 🎟️');
+  $('form-error').classList.add('hidden');
+  $('f-name').value = '';
+  if (adding && saved && saved.phone) $('f-phone').value = saved.phone;
+  show('form');
+  $('f-name').focus();
+}
+
+async function submitForm() {
+  const name = $('f-name').value.trim();
+  const phone = $('f-phone').value.trim();
+  const errEl = $('form-error');
+  errEl.classList.add('hidden');
+
+  if (!name) { errEl.textContent = 'Please enter the patient name.'; errEl.classList.remove('hidden'); return; }
+  if (phone.replace(/\D/g, '').length < 7) { errEl.textContent = 'Please enter a valid phone number.'; errEl.classList.remove('hidden'); return; }
+
+  $('book-btn').disabled = true;
   show('loading');
   try {
-    let value = 0;
-    try {
-      const data = await fetchJSON(GET_URL(sessionKey()));
-      if (typeof data.value === 'number') value = data.value;
-    } catch (e) {
-      if (!String(e).includes('HTTP')) throw e;
-    }
-    $('latest-num').textContent = '#' + value;
-    show('latest');
+    const visit = await bookOne(name, phone);
+    const saved = loadSaved();
+    const patients = (addingMore && saved ? saved.patients : []).concat([
+      { token: visit.token_number, name, source: visit.source },
+    ]);
+    save(patients, phone);
+    renderTicket(patients);
   } catch (err) {
-    console.error('Latest count failed:', err);
-    show('error');
+    console.error('Booking failed:', err);
+    const friendly = friendlyError(err);
+    if (friendly === '__WINDOW__') { await showGate(); }
+    else if (friendly) { showForm({ adding: addingMore }); $('form-error').textContent = friendly; $('form-error').classList.remove('hidden'); }
+    else { show('error'); }
+  } finally {
+    $('book-btn').disabled = false;
   }
+}
+
+async function showGate() {
+  // Show the configured booking windows for today so patients know when to return.
+  try {
+    const { data } = await sb.from('settings').select('value').eq('key', 'booking_windows').single();
+    const w = data && data.value;
+    const dayKey = new Date().getDay() === 0 ? 'sun' : 'mon_sat';
+    const d = w && w[dayKey];
+    if (d) {
+      $('gate-windows').textContent =
+        `${to12h(d.am.open)}–${to12h(d.am.close)} · ${to12h(d.pm.open)}–${to12h(d.pm.close)}`;
+    }
+  } catch (e) { console.warn('window fetch failed', e); }
+  show('gate');
 }
 
 async function init() {
-  $('today-label').textContent = prettyDate();
-  $('gate-hours').textContent = todayHours();
   $('year').textContent = new Date().getFullYear();
 
   const saved = loadSaved();
-  if (saved) {
-    renderTicket(saved.numbers);
-  } else {
-    const token = new URLSearchParams(location.search).get('t');
-    const ok = await window.QueueToken.isValid(token);
-    show(ok ? 'intro' : 'gate');
+  if (saved) { renderTicket(saved.patients); return; }
+
+  if (isWalkin) {
+    showForm();           // DB validates the scan token on submit
+    return;
   }
 
-  $('get-number-btn').addEventListener('click', getMyNumber);
-  $('add-another-btn').addEventListener('click', addAnotherPatient);
-  $('retry-btn').addEventListener('click', () => {
-    const s = loadSaved();
-    if (s) renderTicket(s.numbers); else getMyNumber();
-  });
-  $('lost-link').addEventListener('click', (e) => { e.preventDefault(); showLatestCount(); });
-  $('back-to-ticket').addEventListener('click', () => {
-    const s = loadSaved();
-    if (s) renderTicket(s.numbers); else show('intro');
-  });
+  // Home mode: only show the form if the booking window is open right now.
+  try {
+    const { data: open, error } = await sb.rpc('is_booking_open');
+    if (error) throw error;
+    if (open) showForm();
+    else await showGate();
+  } catch (e) {
+    console.error('window check failed', e);
+    showForm(); // fail open to the form; the DB will still reject if truly closed
+  }
 }
+
+// ---- wire up
+$('book-btn').addEventListener('click', submitForm);
+$('f-phone').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitForm(); });
+$('add-another-btn').addEventListener('click', () => showForm({ adding: true }));
+$('retry-btn').addEventListener('click', () => { const s = loadSaved(); if (s) renderTicket(s.patients); else init(); });
+$('refresh-link').addEventListener('click', (e) => { e.preventDefault(); refreshStatus(); });
 
 document.addEventListener('DOMContentLoaded', init);

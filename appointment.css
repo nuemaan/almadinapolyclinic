@@ -318,6 +318,50 @@ a { color: inherit; text-decoration: none; }
   padding: 18px; font-size: 12.5px;
 }
 
+/* Form fields */
+.appt-field { margin-bottom: 14px; text-align: left; }
+.appt-field label {
+  display: block; font-weight: 800; font-size: 13px;
+  color: var(--muted); margin-bottom: 6px; letter-spacing: .02em;
+}
+.appt-field input {
+  width: 100%; padding: 14px 16px;
+  border: 2px solid rgba(27,23,64,.1); border-radius: 16px;
+  font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 700;
+  color: var(--ink); background: var(--paper);
+  transition: border-color .2s, box-shadow .2s;
+}
+.appt-field input::placeholder { color: #b3b0c4; font-weight: 600; }
+.appt-field input:focus {
+  outline: none; border-color: var(--pink);
+  box-shadow: 0 0 0 4px rgba(255,124,181,.14);
+}
+.appt-err {
+  color: #d6336c; font-weight: 700; font-size: 13.5px;
+  background: #ffe8ee; padding: 10px 13px; border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+/* Live status block on the ticket */
+.ticket-status {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-top: 16px;
+}
+.ts-cell {
+  background: var(--cream); padding: 12px 14px; border-radius: 14px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.ts-cell span { font-size: 11.5px; color: var(--muted); font-weight: 700; }
+.ts-cell strong { font-family: 'Baloo 2', sans-serif; font-size: 22px; line-height: 1; }
+.ts-eta {
+  grid-column: 1 / -1;
+  background: linear-gradient(135deg, rgba(124,200,255,.22), rgba(143,227,196,.22));
+  padding: 14px 16px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.ts-eta span { font-size: 13px; font-weight: 800; color: var(--ink); }
+.ts-eta strong { font-family: 'Baloo 2', sans-serif; font-size: 20px; color: var(--ink); text-align: right; }
+
 /* Tiny screens */
 @media (max-width: 380px) {
   .appt-meta, .ticket-info { grid-template-columns: 1fr; }

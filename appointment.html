@@ -4,11 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ff7cb5" />
-<title>Get your appointment number — Al Madina Polyclinic</title>
+<title>Book your appointment — Al Madina Polyclinic</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="appointment.css?v=1" />
+<link rel="stylesheet" href="appointment.css?v=2" />
 </head>
 <body>
 
@@ -25,35 +25,47 @@
 
 <main class="appt-wrap">
 
-  <!-- GATE STATE — shown when the page is opened without a valid QR token -->
-  <section id="state-gate" class="appt-state hidden">
-    <div class="gate-emoji">📷</div>
-    <h1>Please scan the QR at the <span class="grad">clinic</span></h1>
-    <p class="appt-lead">Appointment numbers can only be taken from inside the clinic. Please scan the QR code displayed at the reception desk to get your number.</p>
-    <div class="appt-meta">
-      <div><span>📞 Call</span><strong>+91 95965 79443</strong></div>
-      <div><span>🕐 Today</span><strong id="gate-hours">—</strong></div>
+  <!-- BOOKING FORM (home booking, or walk-in after scanning the QR) -->
+  <section id="state-form" class="appt-state hidden">
+    <div class="appt-eyebrow" id="form-eyebrow">✦ Book appointment</div>
+    <h1 id="form-title">Book your <span class="grad">appointment</span> 🎟️</h1>
+    <p class="appt-lead" id="form-lead">Enter your details to join today's queue. We'll see you in turn — thank you for choosing Al Madina! 💛</p>
+
+    <div class="appt-field">
+      <label for="f-name">Patient name</label>
+      <input id="f-name" type="text" autocomplete="name" placeholder="Child's full name" />
     </div>
-    <a href="index.html" class="appt-ghost" style="display:inline-flex;margin-top:8px">🏥 Visit clinic website</a>
-  </section>
-
-  <!-- INTRO STATE -->
-  <section id="state-intro" class="appt-state hidden">
-    <div class="appt-eyebrow">✦ Self-serve queue</div>
-    <h1>Tap once to get your <span class="grad">appointment number</span> 🎟️</h1>
-    <p class="appt-lead">Tap the button below to instantly secure your spot in today's queue. We'll see you in turn — thanks for choosing Al Madina! 💛</p>
-
-    <div class="appt-meta">
-      <div><span>📅 Today</span><strong id="today-label">—</strong></div>
-      <div><span>🏥 Clinic</span><strong>Al Madina Polyclinic</strong></div>
+    <div class="appt-field">
+      <label for="f-phone">Phone number</label>
+      <input id="f-phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="e.g. 9596579443" />
     </div>
 
-    <button id="get-number-btn" class="appt-cta">
+    <p class="appt-err hidden" id="form-error"></p>
+
+    <button id="book-btn" class="appt-cta">
       <span>Get my number</span>
       <svg viewBox="0 0 24 24" width="22" height="22"><path d="M5 12h14M13 5l7 7-7 7" stroke="white" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
 
-    <p class="appt-tiny">By tapping, you'll be added to today's queue. Please show the number at reception.</p>
+    <div class="appt-meta" style="margin-top:18px;margin-bottom:0">
+      <div><span>📅 Today</span><strong id="today-label">—</strong></div>
+      <div><span>🕐 Hours</span><strong id="form-hours">—</strong></div>
+    </div>
+
+    <p class="appt-tiny" id="form-note">Your name and number are shared only with the clinic so the doctor can call you in turn.</p>
+  </section>
+
+  <!-- GATE STATE — home booking window is closed right now -->
+  <section id="state-gate" class="appt-state hidden">
+    <div class="gate-emoji">⏰</div>
+    <h1>Booking is <span class="grad">closed</span> right now</h1>
+    <p class="appt-lead">Home booking opens at fixed times before each clinic session. Please come back during the booking window.</p>
+    <div class="appt-meta">
+      <div><span>🟢 Booking opens</span><strong id="gate-windows">—</strong></div>
+      <div><span>📞 Call</span><strong>+91 95965 79443</strong></div>
+    </div>
+    <p class="appt-tiny">Already at the clinic? Scan the QR code at the reception desk to get a number right away.</p>
+    <a href="index.html" class="appt-ghost" style="display:inline-flex;margin-top:12px">🏥 Visit clinic website</a>
   </section>
 
   <!-- LOADING STATE -->
@@ -74,7 +86,7 @@
             <strong>Al Madina Polyclinic</strong>
           </div>
         </div>
-        <span class="ticket-badge">Today's queue</span>
+        <span class="ticket-badge" id="ticket-badge">Today's queue</span>
       </div>
 
       <div class="ticket-divider"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
@@ -84,6 +96,16 @@
         <div class="ticket-num" id="ticket-num">—</div>
         <div class="ticket-nums hidden" id="ticket-nums"></div>
         <div class="ticket-sub" id="ticket-sub">—</div>
+      </div>
+
+      <!-- LIVE STATUS -->
+      <div class="ticket-status" id="ticket-status">
+        <div class="ts-cell"><span>👀 Patients seen</span><strong id="ts-attended">—</strong></div>
+        <div class="ts-cell"><span>🔔 Now serving</span><strong id="ts-serving">—</strong></div>
+        <div class="ts-eta">
+          <span id="ts-eta-label">⏳ Your turn (approx.)</span>
+          <strong id="ts-eta">—</strong>
+        </div>
       </div>
 
       <div class="ticket-info">
@@ -109,7 +131,7 @@
       <a href="index.html" class="appt-ghost">🏥 Explore the clinic</a>
     </div>
 
-    <p class="appt-tiny center"><a href="#" id="lost-link">Lost your number? Check the latest queue count →</a></p>
+    <p class="appt-tiny center"><a href="#" id="refresh-link">↻ Refresh my live status</a></p>
   </section>
 
   <!-- ERROR STATE -->
@@ -124,24 +146,14 @@
     </div>
   </section>
 
-  <!-- LATEST COUNT POPUP (lost-number flow) -->
-  <section id="state-latest" class="appt-state hidden">
-    <div class="latest-card">
-      <div class="latest-emoji">🔢</div>
-      <p class="latest-label">Latest queue count today</p>
-      <div class="latest-num" id="latest-num">—</div>
-      <p class="appt-tiny">This is the most recent number issued. Compare with the screen at reception to find your spot.</p>
-      <button id="back-to-ticket" class="appt-ghost">← Back</button>
-    </div>
-  </section>
-
 </main>
 
 <footer class="appt-foot">
   <small>© <span id="year">2026</span> Al Madina Polyclinic & Laboratory</small>
 </footer>
 
-<script src="queue-token.js?v=1"></script>
-<script src="appointment.js?v=2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js?v=1"></script>
+<script src="appointment.js?v=3"></script>
 </body>
 </html>
