@@ -380,7 +380,7 @@
     $('dq-session').textContent = `${formatDate(currentSession.session_date)} · ${currentSession.session.toUpperCase()}`;
     const { data, error } = await sb
       .from('visits')
-      .select('id,token_number,source,status,patients(name,phone,age,gender)')
+      .select('id,token_number,source,status,patients(id,name,phone,age,gender)')
       .eq('session_date', currentSession.session_date)
       .eq('session', currentSession.session)
       .in('status', ['waiting', 'attending'])
@@ -476,11 +476,13 @@
   }
 
   async function loadHistory(v) {
-    const phone = v.patients?.phone;
+    const pid = v.patients?.id;
     const el = $('dq-history');
+    // Per-child history: previous prescriptions for THIS patient (not siblings
+    // on the same phone). Identity is now (phone + name).
     const { data, error } = await sb.from('prescriptions')
-      .select('created_at,doctor_name,notes,medicines,patients!inner(phone)')
-      .eq('patients.phone', phone).order('created_at', { ascending: false }).limit(10);
+      .select('created_at,doctor_name,notes,medicines')
+      .eq('patient_id', pid).order('created_at', { ascending: false }).limit(10);
     if (error) { el.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
     if (!data.length) { el.innerHTML = '<div class="empty">First visit — no previous prescriptions.</div>'; return; }
     el.innerHTML = data.map(rx => `
