@@ -12,8 +12,14 @@
     console.error('Supabase JS library not loaded before supabase-config.js');
     return;
   }
+  // Patient-facing pages set window.SUPABASE_ANON_ONLY = true so they never
+  // inherit (or persist) a staff login that might be in this browser — their
+  // calls always run as the anon role, isolated by a separate storage key.
+  const anonOnly = !!window.SUPABASE_ANON_ONLY;
   window.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true },
+    auth: anonOnly
+      ? { persistSession: false, autoRefreshToken: false, storageKey: 'sb-almadina-anon' }
+      : { persistSession: true, autoRefreshToken: true },
   });
   window.SUPABASE_URL = SUPABASE_URL;
 })();

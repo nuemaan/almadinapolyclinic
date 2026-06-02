@@ -52,7 +52,7 @@
       <div><span>🕐 Hours</span><strong id="form-hours">—</strong></div>
     </div>
 
-    <p class="appt-tiny" id="form-note">Your name and number are shared only with the clinic so the doctor can call you in turn.</p>
+    <p class="appt-tiny" id="form-note">📍 We'll ask for your location to give you a slot you can reach in time. Your name &amp; number are shared only with the clinic.</p>
   </section>
 
   <!-- GATE STATE — home booking window is closed right now -->
@@ -72,7 +72,7 @@
   <section id="state-loading" class="appt-state hidden">
     <div class="loader-wrap">
       <div class="loader"></div>
-      <p>Reserving your spot…</p>
+      <p id="loading-text">Finding your slot…</p>
     </div>
   </section>
 
@@ -96,6 +96,7 @@
         <div class="ticket-num" id="ticket-num">—</div>
         <div class="ticket-nums hidden" id="ticket-nums"></div>
         <div class="ticket-sub" id="ticket-sub">—</div>
+        <div class="ticket-when" id="ticket-when"></div>
       </div>
 
       <!-- LIVE STATUS -->
@@ -152,8 +153,9 @@
   <small>© <span id="year">2026</span> Al Madina Polyclinic & Laboratory</small>
 </footer>
 
+<script>window.SUPABASE_ANON_ONLY = true;</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js?v=1"></script>
-<script src="appointment.js?v=3"></script>
+<script src="supabase-config.js?v=2"></script>
+<script src="appointment.js?v=4"></script>
 </body>
 </html>

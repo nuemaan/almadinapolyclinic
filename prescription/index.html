@@ -111,6 +111,10 @@
   button.danger:hover { background: #fed7aa; }
   .actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 
+  .sch-sess { border: 1px solid var(--teal-soft); background: var(--teal-bg); border-radius: 12px; padding: 14px; }
+  .sch-toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: var(--teal-dark); text-transform: none; letter-spacing: 0; margin-bottom: 10px; }
+  .sch-toggle input { width: auto; }
+
   /* Queue / pharmacist two-pane layout */
   .pharm-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; }
   @media (max-width: 800px) { .pharm-layout { grid-template-columns: 1fr; } .grid, .grid-2 { grid-template-columns: 1fr; } }
@@ -212,6 +216,7 @@
   <div class="tabs" id="tabs">
     <button class="tab-btn active" data-tab="doctor">Doctor</button>
     <button class="tab-btn" data-tab="pharmacist">Pharmacist</button>
+    <button class="tab-btn" data-tab="schedule">Schedule</button>
     <button class="tab-btn" data-tab="lab">Lab</button>
   </div>
   <div class="whoami"><span id="who">—</span><button class="logout-btn" id="logout-btn">Logout</button></div>
@@ -241,6 +246,33 @@
       </div>
       <div id="rx-detail"></div>
     </div>
+  </section>
+
+  <!-- SCHEDULE PANEL — pharmacist sets per-day clinic hours -->
+  <section id="panel-schedule" class="panel">
+    <div class="card" style="max-width: 660px;">
+      <h2>Set clinic hours for a day</h2>
+      <div class="grid-2">
+        <div><label>Date</label><input id="sch-date" type="date"></div>
+        <div><label>Note (optional)</label><input id="sch-note" placeholder="e.g. Doctor away in the evening"></div>
+      </div>
+      <div style="margin-top:16px; display:grid; gap:12px;">
+        <div class="sch-sess">
+          <label class="sch-toggle"><input type="checkbox" id="sch-am-on"> 🌅 Morning open</label>
+          <div class="grid-2"><div><label>Opens</label><input id="sch-am-open" type="time"></div><div><label>Closes</label><input id="sch-am-close" type="time"></div></div>
+        </div>
+        <div class="sch-sess">
+          <label class="sch-toggle"><input type="checkbox" id="sch-pm-on"> 🌇 Evening open</label>
+          <div class="grid-2"><div><label>Opens</label><input id="sch-pm-open" type="time"></div><div><label>Closes</label><input id="sch-pm-close" type="time"></div></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="sch-save">Save this day</button>
+        <button class="secondary" id="sch-reset">Reset to normal hours</button>
+      </div>
+      <p style="font-size:12px; color:var(--muted); margin-top:8px;">Leave a session unchecked to mark it <b>closed</b>. Days you don't set use the normal weekly hours. Patients are auto-routed to the next session they can reach in time.</p>
+    </div>
+    <div class="card"><h2>Upcoming overrides</h2><div id="sch-list"></div></div>
   </section>
 
   <!-- LAB PANEL (browser-local for now; moves to Supabase in a later phase) -->
@@ -284,9 +316,10 @@
   };
 
   const TABS_BY_ROLE = {
-    doctor:    ['doctor', 'pharmacist'],
-    reception: ['doctor', 'pharmacist', 'lab'],
-    lab:       ['lab'],
+    doctor:     ['doctor', 'pharmacist'],
+    reception:  ['doctor', 'pharmacist', 'schedule', 'lab'],
+    lab:        ['lab'],
+    pharmacist: ['schedule', 'pharmacist'],
   };
 
   let staffProfile = null;   // { role, name }
@@ -356,6 +389,7 @@
     if (tab === 'doctor') loadQueue();
     if (tab === 'pharmacist') loadPrescriptions();
     if (tab === 'lab') renderLab();
+    if (tab === 'schedule') loadSchedule();
   }
   document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => activateTab(b.dataset.tab)));
 
@@ -663,6 +697,77 @@
       console.error(e); toast('Upload failed: ' + (e.message || e), '#ef4444');
     } finally { $('lab-upload-btn').disabled = false; }
   }
+
+  /* ====================== SCHEDULE (pharmacist) ====================== */
+  const hm = (t) => (t ? String(t).slice(0, 5) : '');   // '09:00:00' -> '09:00'
+
+  async function loadSchedule() {
+    if (!$('sch-date').value) {
+      const t = new Date(Date.now() + 86400000);        // default to tomorrow
+      $('sch-date').value = t.toISOString().slice(0, 10);
+    }
+    await fillScheduleForm($('sch-date').value);
+    renderScheduleList();
+  }
+  async function fillScheduleForm(date) {
+    let amo, amc, pmo, pmc, note = '';
+    const { data } = await sb.from('day_schedule').select('*').eq('date', date).maybeSingle();
+    if (data) { amo = data.am_open; amc = data.am_close; pmo = data.pm_open; pmc = data.pm_close; note = data.note || ''; }
+    else {
+      const { data: eff } = await sb.rpc('effective_schedule', { d: date });
+      const e = Array.isArray(eff) ? eff[0] : eff;
+      if (e) { amo = e.am_open; amc = e.am_close; pmo = e.pm_open; pmc = e.pm_close; }
+    }
+    $('sch-am-on').checked = !!(amo && amc); $('sch-am-open').value = hm(amo); $('sch-am-close').value = hm(amc);
+    $('sch-pm-on').checked = !!(pmo && pmc); $('sch-pm-open').value = hm(pmo); $('sch-pm-close').value = hm(pmc);
+    $('sch-note').value = note;
+  }
+  async function saveSchedule() {
+    const date = $('sch-date').value;
+    if (!date) return toast('Pick a date', '#ef4444');
+    const amOn = $('sch-am-on').checked, pmOn = $('sch-pm-on').checked;
+    const { data: { user } } = await sb.auth.getUser();
+    const row = {
+      date,
+      am_open:  amOn ? ($('sch-am-open').value || null) : null,
+      am_close: amOn ? ($('sch-am-close').value || null) : null,
+      pm_open:  pmOn ? ($('sch-pm-open').value || null) : null,
+      pm_close: pmOn ? ($('sch-pm-close').value || null) : null,
+      note: $('sch-note').value.trim() || null,
+      updated_by: user.id, updated_at: new Date().toISOString(),
+    };
+    if (amOn && (!row.am_open || !row.am_close)) return toast('Set morning open & close times', '#ef4444');
+    if (pmOn && (!row.pm_open || !row.pm_close)) return toast('Set evening open & close times', '#ef4444');
+    const { error } = await sb.from('day_schedule').upsert(row);
+    if (error) return toast('Save failed: ' + error.message, '#ef4444');
+    toast('Saved hours for ' + date); renderScheduleList();
+  }
+  async function resetSchedule() {
+    const date = $('sch-date').value; if (!date) return;
+    if (!confirm('Remove the override for ' + date + ' and use the normal weekly hours?')) return;
+    await sb.from('day_schedule').delete().eq('date', date);
+    toast('Reset to normal hours'); fillScheduleForm(date); renderScheduleList();
+  }
+  async function renderScheduleList() {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data } = await sb.from('day_schedule').select('*').gte('date', today).order('date').limit(60);
+    const el = $('sch-list');
+    if (!data || !data.length) { el.innerHTML = '<div class="empty">No overrides set — normal weekly hours apply.</div>'; return; }
+    const closed = '<span style="color:#c2410c;font-weight:700;">Closed</span>';
+    el.innerHTML = `<table><thead><tr><th>Date</th><th>Morning</th><th>Evening</th><th>Note</th><th></th></tr></thead><tbody>${data.map(r => `
+      <tr><td>${r.date}</td>
+        <td>${r.am_open ? hm(r.am_open) + '–' + hm(r.am_close) : closed}</td>
+        <td>${r.pm_open ? hm(r.pm_open) + '–' + hm(r.pm_close) : closed}</td>
+        <td>${escapeHtml(r.note || '')}</td>
+        <td><button class="danger" data-d="${r.date}">Remove</button></td></tr>`).join('')}</tbody></table>`;
+    el.querySelectorAll('button.danger').forEach(b => b.addEventListener('click', async () => {
+      await sb.from('day_schedule').delete().eq('date', b.dataset.d);
+      toast('Removed'); renderScheduleList();
+      if ($('sch-date').value === b.dataset.d) fillScheduleForm(b.dataset.d);
+    }));
+  }
+  document.addEventListener('change', (e) => { if (e.target.id === 'sch-date') fillScheduleForm(e.target.value); });
+  document.addEventListener('click', (e) => { if (e.target.id === 'sch-save') saveSchedule(); if (e.target.id === 'sch-reset') resetSchedule(); });
 
   document.addEventListener('click', (e) => { if (e.target.id === 'lab-pick-btn') $('lab-files').click(); });
   document.addEventListener('change', (e) => {
