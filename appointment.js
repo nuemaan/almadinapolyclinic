@@ -93,6 +93,12 @@ function renderTicket(patients) {
     `<span class="tw-row">🗓 <b>${sessionLabel(p.session_date, p.session)}</b>${patients.length > 1 ? ` · #${p.token}` : ''}</span>`
   ).join('');
 
+  // Friendly routing message (from the latest booking)
+  const last = patients[patients.length - 1];
+  $('ticket-headline').textContent = last.headline || '';
+  $('ticket-msg').textContent = last.message || '';
+  $('ticket-msg').classList.toggle('hidden', !last.message);
+
   $('ticket-badge').textContent = (patients[0].source === 'home' ? 'Home booking' : 'Walk-in');
 
   const anyCurrent = patients.some(isCurrentBooking);
@@ -188,7 +194,7 @@ async function submitForm() {
     const res = await bookOne(name, phone, loc);
     const saved = loadSaved();
     const patients = (addingMore && saved ? saved.patients : []).concat([
-      { token: res.token_number, name, source: res.source, session_date: res.session_date, session: res.session },
+      { token: res.token_number, name, source: res.source, session_date: res.session_date, session: res.session, headline: res.headline, message: res.message },
     ]);
     save(patients, phone);
     await ensureSession();

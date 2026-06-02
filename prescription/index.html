@@ -263,7 +263,8 @@
         </div>
         <div class="sch-sess">
           <label class="sch-toggle"><input type="checkbox" id="sch-pm-on"> 🌇 Evening open</label>
-          <div class="grid-2"><div><label>Opens</label><input id="sch-pm-open" type="time"></div><div><label>Closes</label><input id="sch-pm-close" type="time"></div></div>
+          <div class="grid"><div><label>Opens</label><input id="sch-pm-open" type="time"></div><div><label>Closes</label><input id="sch-pm-close" type="time"></div><div><label>Can run late until</label><input id="sch-pm-flex" type="time"></div></div>
+          <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">Bookings are accepted until the late time (the doctor may stay a bit longer). Leave blank to stop at closing.</p>
         </div>
       </div>
       <div class="actions">
@@ -301,7 +302,7 @@
 <div class="toast" id="toast">Saved</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../supabase-config.js?v=1"></script>
+<script src="../supabase-config.js?v=2"></script>
 <script>
   const sb = window.supabaseClient;
   const $ = (id) => document.getElementById(id);
@@ -710,16 +711,17 @@
     renderScheduleList();
   }
   async function fillScheduleForm(date) {
-    let amo, amc, pmo, pmc, note = '';
+    let amo, amc, pmo, pmc, pmf, note = '';
     const { data } = await sb.from('day_schedule').select('*').eq('date', date).maybeSingle();
-    if (data) { amo = data.am_open; amc = data.am_close; pmo = data.pm_open; pmc = data.pm_close; note = data.note || ''; }
+    if (data) { amo = data.am_open; amc = data.am_close; pmo = data.pm_open; pmc = data.pm_close; pmf = data.pm_flex_close; note = data.note || ''; }
     else {
       const { data: eff } = await sb.rpc('effective_schedule', { d: date });
       const e = Array.isArray(eff) ? eff[0] : eff;
-      if (e) { amo = e.am_open; amc = e.am_close; pmo = e.pm_open; pmc = e.pm_close; }
+      if (e) { amo = e.am_open; amc = e.am_close; pmo = e.pm_open; pmc = e.pm_close; pmf = e.pm_flex_close; }
     }
     $('sch-am-on').checked = !!(amo && amc); $('sch-am-open').value = hm(amo); $('sch-am-close').value = hm(amc);
     $('sch-pm-on').checked = !!(pmo && pmc); $('sch-pm-open').value = hm(pmo); $('sch-pm-close').value = hm(pmc);
+    $('sch-pm-flex').value = hm(pmf);
     $('sch-note').value = note;
   }
   async function saveSchedule() {
@@ -733,6 +735,7 @@
       am_close: amOn ? ($('sch-am-close').value || null) : null,
       pm_open:  pmOn ? ($('sch-pm-open').value || null) : null,
       pm_close: pmOn ? ($('sch-pm-close').value || null) : null,
+      pm_flex_close: pmOn ? ($('sch-pm-flex').value || null) : null,
       note: $('sch-note').value.trim() || null,
       updated_by: user.id, updated_at: new Date().toISOString(),
     };
@@ -757,7 +760,7 @@
     el.innerHTML = `<table><thead><tr><th>Date</th><th>Morning</th><th>Evening</th><th>Note</th><th></th></tr></thead><tbody>${data.map(r => `
       <tr><td>${r.date}</td>
         <td>${r.am_open ? hm(r.am_open) + '–' + hm(r.am_close) : closed}</td>
-        <td>${r.pm_open ? hm(r.pm_open) + '–' + hm(r.pm_close) : closed}</td>
+        <td>${r.pm_open ? hm(r.pm_open) + '–' + hm(r.pm_close) + (r.pm_flex_close ? ` <span style="color:var(--muted)">(late till ${hm(r.pm_flex_close)})</span>` : '') : closed}</td>
         <td>${escapeHtml(r.note || '')}</td>
         <td><button class="danger" data-d="${r.date}">Remove</button></td></tr>`).join('')}</tbody></table>`;
     el.querySelectorAll('button.danger').forEach(b => b.addEventListener('click', async () => {
