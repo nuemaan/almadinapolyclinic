@@ -57,6 +57,9 @@ function sessionLabel(dateStr, sess) {
   else day = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
   return `${day} · ${sName}`;
 }
+function fullDate(dateStr) {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
 
 // ---- geolocation (best effort) ----
 function getLocation() {
@@ -90,7 +93,7 @@ function renderTicket(patients) {
 
   // "When" banner — one line per booking with its session label
   $('ticket-when').innerHTML = patients.map(p =>
-    `<span class="tw-row">🗓 <b>${sessionLabel(p.session_date, p.session)}</b>${patients.length > 1 ? ` · #${p.token}` : ''}</span>`
+    `<span class="tw-row">🗓 <b>${sessionLabel(p.session_date, p.session)}</b>${patients.length > 1 ? ` · #${p.token}` : ''}<span class="tw-date">${fullDate(p.session_date)}</span></span>`
   ).join('');
 
   // Friendly routing message (from the latest booking)
