@@ -118,6 +118,36 @@
   /* Queue / pharmacist two-pane layout */
   .pharm-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; }
   @media (max-width: 800px) { .pharm-layout { grid-template-columns: 1fr; } .grid, .grid-2 { grid-template-columns: 1fr; } }
+
+  @media (max-width: 640px) {
+    header { padding: 12px 14px; gap: 10px; }
+    header h1 { font-size: 17px; }
+    header > div:first-child div { font-size: 11px; }
+    /* tabs scroll sideways instead of wrapping into messy rows */
+    .tabs { order: 3; width: 100%; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab-btn { padding: 8px 16px; font-size: 13px; white-space: nowrap; flex: 0 0 auto; }
+    .whoami { order: 2; font-size: 12px; }
+
+    main { padding: 16px 12px; }
+    .card { padding: 16px; border-radius: 14px; margin-bottom: 14px; }
+    .card h2 { font-size: 16px; }
+    .pharm-layout { gap: 12px; }
+    .rx-list { max-height: 340px; }
+
+    /* medicine rows: name + remove full width, rest two-up */
+    .med-row { grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
+    .med-row > div:first-child,
+    .med-row > div:last-child { grid-column: 1 / -1; }
+    .med-row button.danger { width: 100%; }
+
+    /* wide tables scroll horizontally instead of squishing */
+    .card table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+
+    .info-row { gap: 14px; padding: 12px; }
+    .actions { gap: 8px; }
+    .login-card { padding: 24px 18px; }
+  }
   .rx-list {
     background: #fff; border-radius: 16px; padding: 14px;
     box-shadow: 0 2px 12px rgba(13,148,136,0.06), 0 1px 3px rgba(0,0,0,0.04);
