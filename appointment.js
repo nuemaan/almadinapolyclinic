@@ -46,6 +46,25 @@ async function ensureSession() {
   try { const { data } = await sb.rpc('app_current_session'); currentSession = Array.isArray(data) ? data[0] : data; } catch {}
 }
 function isCurrentBooking(b) { return currentSession && b.session_date === currentSession.session_date && b.session === currentSession.session; }
+// A booking is "past" once its session has finished (earlier day, or this
+// morning when it is already evening). Past bookings are dropped so an old
+// ticket from a previous day never lingers or mixes with a new one.
+function isPastBooking(b) {
+  if (!currentSession) return false;
+  if (b.session_date < currentSession.session_date) return true;
+  if (b.session_date === currentSession.session_date && currentSession.session === 'pm' && b.session === 'am') return true;
+  return false;
+}
+function pruneSaved() {
+  const saved = loadSaved();
+  if (!saved) return null;
+  const fresh = saved.patients.filter(p => !isPastBooking(p));
+  if (fresh.length !== saved.patients.length) {
+    if (fresh.length) save(fresh, saved.phone);
+    else { try { localStorage.removeItem(STORAGE_KEY); } catch {} }
+  }
+  return fresh.length ? { patients: fresh, phone: saved.phone } : null;
+}
 
 function sessionLabel(dateStr, sess) {
   const sName = sess === 'am' ? 'Morning' : 'Evening';
@@ -195,7 +214,7 @@ async function submitForm() {
   try {
     const loc = isWalkin ? null : await getLocation();
     const res = await bookOne(name, phone, loc);
-    const saved = loadSaved();
+    const saved = pruneSaved();
     const patients = (addingMore && saved ? saved.patients : []).concat([
       { token: res.token_number, name, source: res.source, session_date: res.session_date, session: res.session, headline: res.headline, message: res.message },
     ]);
@@ -223,7 +242,7 @@ function showNoSlot() {
 async function init() {
   $('year').textContent = new Date().getFullYear();
   await ensureSession();
-  const saved = loadSaved();
+  const saved = pruneSaved();
   if (saved) { renderTicket(saved.patients); return; }
   showForm();
 }
@@ -232,7 +251,7 @@ $('book-btn').addEventListener('click', submitForm);
 $('f-phone').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); });
 $('f-phone').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitForm(); });
 $('add-another-btn').addEventListener('click', () => showForm({ adding: true }));
-$('retry-btn').addEventListener('click', () => { const s = loadSaved(); if (s) renderTicket(s.patients); else init(); });
+$('retry-btn').addEventListener('click', () => { const s = pruneSaved(); if (s) renderTicket(s.patients); else init(); });
 $('refresh-link') && $('refresh-link').addEventListener('click', (e) => { e.preventDefault(); refreshStatus(); });
 
 document.addEventListener('DOMContentLoaded', init);
