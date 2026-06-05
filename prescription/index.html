@@ -207,12 +207,54 @@
   .login-err { color:#c2410c; background: var(--coral-soft); border-radius:10px; padding:9px 12px; font-size:13px; font-weight:700; margin-top:12px; }
   .login-card button.primary { width:100%; margin-top: 18px; padding: 12px; font-size: 15px; }
 
+  /* ---- Prescription letterhead (matches the clinic's printed pads) ---- */
+  .rxsheet {
+    background: #fff; color: #0b1f3a;
+    font-family: 'Times New Roman', Georgia, serif;
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 24px 14px; max-width: 760px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .rx-contact { text-align: right; font-size: 11px; font-weight: 700; line-height: 1.4; }
+  .rx-title { text-align: center; font-weight: 800; font-size: clamp(22px, 4.4vw, 32px); letter-spacing: .5px; color: #0b2e6b; line-height: 1.05; margin-top: -6px; }
+  .rx-addr { text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .3px; }
+  .rx-head { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: start; margin-top: 12px; }
+  .rx-doc-name { font-style: italic; font-weight: 800; font-size: 20px; color: #0b2e6b; margin-bottom: 3px; }
+  .rx-q { font-size: 10.5px; font-weight: 700; line-height: 1.45; }
+  .rx-cad { text-align: center; }
+  .rx-timing { font-size: 11.5px; font-weight: 700; line-height: 1.5; }
+  .rx-th { text-decoration: underline; font-weight: 800; font-size: 12.5px; }
+  .rx-dated { text-align: right; margin-top: 14px; font-size: 13px; }
+  .rx-rule { border-bottom: 2px solid #0b1f3a; margin: 5px 0; }
+  .rx-patient { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; padding: 3px 0; }
+  .rx-body { display: grid; grid-template-columns: 150px 1fr; min-height: 460px; }
+  .rx-inv { font-weight: 800; font-size: 13px; padding-top: 10px; }
+  .rx-content { border-left: 2px solid #0b1f3a; padding: 8px 0 0 18px; }
+  .rx-symbol { font-size: 34px; font-weight: 800; color: #0b2e6b; line-height: 1; }
+  .rx-notes { font-size: 13px; margin: 8px 0 14px; }
+  .rx-meds { margin: 10px 0 0 20px; padding: 0; }
+  .rx-meds li { margin-bottom: 14px; font-size: 14px; }
+  .rx-meds .m-nm { font-weight: 700; display: block; }
+  .rx-meds .m-dt { font-size: 12.5px; color: #333; }
+  .rx-foot { border-top: 2px solid #0b1f3a; margin-top: 12px; padding-top: 8px; text-align: center; font-size: 12px; font-weight: 800; }
+  .rx-foot-it { font-style: italic; font-weight: 600; }
+  @media (max-width: 640px) {
+    .rxsheet { padding: 14px 14px 10px; }
+    .rx-head { grid-template-columns: 1fr; }
+    .rx-cad, .rx-timing { text-align: left; }
+    .rx-body { grid-template-columns: 1fr; min-height: 0; }
+    .rx-content { border-left: none; padding-left: 0; }
+    .rx-inv { padding-top: 0; }
+  }
+
   .hidden { display: none !important; }
   @media print {
     body * { visibility: hidden; }
     #print-area, #print-area * { visibility: visible; }
-    #print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 30px; background: #fff; }
+    #print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 24px; background: #fff; }
     #print-area .no-print { display: none !important; }
+    .rxsheet { border: none; max-width: none; }
+    .rx-body { min-height: 540px; }
     .toast { display: none !important; }
   }
 </style>
@@ -344,7 +386,52 @@
     address: '1st Floor, Al-Rahat Chinar Shopping Complex, Beehama, Ganderbal, Kashmir',
     phone: '+91 95965 79443',
     website: 'almadinapolyclinic.com',
+    cell: '9596579443',
+    landline: '0194-4035303 (Call Clinic Time Only)',
+    addressLine: '1ˢᵗ FLOOR AL-RAHAT CHINAR SHOPPING COMPLEX BEEHAMA GANDERBAL',
   };
+
+  // Per-doctor letterhead profiles (credentials + timing), keyed by name.
+  const DOCTORS = [
+    {
+      name: 'Dr. Rayis Ahmad Rather',
+      quals: [
+        'MD, Fellowship in Primary Care Pediatrics',
+        'PGPN (Post. Graduate in Pediatric Nutrition)',
+        'Facility Based New Born Care (FBNC)',
+        'GB Pant Children Hospital Srinagar',
+        'Life Member Academy of Pediatric Neurology',
+        'BLS (Saudi Heart Association)',
+        'SMLE Board Certified KSA',
+      ],
+      timing: ['Monday to Saturday:', ' Morning: 09:30AM – 10:30AM', ' Evening: 5:00PM – 7:00PM', 'Sunday:', ' Morning: 10:00AM – 1:30PM', ' Evening: Closed'],
+    },
+    {
+      name: 'Dr. Ajaz Ahmad Suhaff',
+      quals: [
+        'MBBS, DNB, MIPS, FSASS, LMINSC',
+        'Consultant Psychiatrist',
+        'Life Fellow – Indian Association of Geriatric Mental Health',
+        'Certified Clinical Trauma Specialist (Arizona Trauma Institute)',
+        'Specialized Training in Drug De-addiction (NIMHANS)',
+        'Certificate in Reproductive Health / Sexual Disorders (Medvarsity)',
+        'Specialized Training in Tobacco Cessation (Gujarat University)',
+      ],
+      timing: ['Every Friday', 'From 3:30 PM to 5:00 PM'],
+    },
+    {
+      name: 'Dr. Mir Laieq Ishtiyaq',
+      quals: [
+        'MBBS (SKIMS), DDVL (Dermatology, GMC Srinagar),',
+        'MRCP (UK), MRCP (London)',
+        'Regd. No.: 8901/2379',
+        'Life Member : IADVL, ACSI',
+        'Consultant Dermatologist, Physician & Dermatosurgeon',
+      ],
+      timing: ['EVERY THURSDAY', '2:00 PM'],
+    },
+  ];
+  const docProfile = (name) => DOCTORS.find(d => d.name === name) || { name: name || 'Doctor', quals: [], timing: [] };
 
   const TABS_BY_ROLE = {
     doctor:     ['doctor', 'pharmacist', 'schedule'],
@@ -491,6 +578,7 @@
   async function renderConsult(v) {
     const p = v.patients || {};
     const detail = $('dq-detail');
+    const defaultDoc = DOCTORS.some(d => d.name === staffProfile.name) ? staffProfile.name : DOCTORS[0].name;
     detail.innerHTML = `
       <div class="card">
         <h2>Consultation — Token #${v.token_number}</h2>
@@ -507,7 +595,10 @@
               <option ${p.gender==='Female'?'selected':''}>Female</option>
               <option ${p.gender==='Other'?'selected':''}>Other</option>
             </select></div>
-          <div></div>
+          <div><label>Prescribing doctor</label>
+            <select id="dq-doctor">
+              ${DOCTORS.map(d => `<option ${d.name===defaultDoc?'selected':''}>${escapeHtml(d.name)}</option>`).join('')}
+            </select></div>
         </div>
         <div style="margin-top:14px;"><label>Notes / Diagnosis</label><textarea id="dq-notes" placeholder="Symptoms, diagnosis, advice…"></textarea></div>
       </div>
@@ -572,7 +663,7 @@
     $('save-rx-btn').disabled = true;
     const { error } = await sb.rpc('save_prescription', {
       p_visit_id: v.id,
-      p_doctor_name: staffProfile.name,
+      p_doctor_name: ($('dq-doctor') && $('dq-doctor').value) || staffProfile.name,
       p_notes: $('dq-notes').value.trim(),
       p_medicines: meds,
       p_age: $('dq-age').value ? parseInt($('dq-age').value, 10) : null,
@@ -611,33 +702,57 @@
     const el = $('rx-detail');
     if (!rx) { el.innerHTML = '<div class="card"><div class="empty">Select a prescription</div></div>'; return; }
     const p = rx.patients || {};
+    const doc = docProfile(rx.doctor_name);
+    const ageGender = [p.age ? p.age + 'y' : '', p.gender || ''].filter(Boolean).join(' / ') || '—';
+    const meds = rx.medicines || [];
     el.innerHTML = `
-      <div id="print-area"><div class="card">
-        <div style="text-align:center; padding:4px 0 16px; margin-bottom:18px; border-bottom:2px dashed var(--teal);">
-          <div style="font-size:24px; font-weight:800; color:var(--teal-dark);">${escapeHtml(CLINIC.name)}</div>
-          <div style="font-size:12px; color:#374151; margin-top:6px;">${escapeHtml(CLINIC.address)}</div>
-          <div style="font-size:12px; color:var(--coral); font-weight:700; margin-top:2px;">Phone: ${escapeHtml(CLINIC.phone)} · ${escapeHtml(CLINIC.website)}</div>
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
-          <h2 style="margin:0;">Prescription</h2>
-          <div class="no-print actions" style="margin:0;">
-            <button class="secondary" id="print-btn">Print</button>
-            <button class="primary" id="csv-btn">Save for ERP (CSV)</button>
+      <div class="no-print actions" style="margin-bottom:12px;">
+        <button class="secondary" id="print-btn">🖨 Print</button>
+        <button class="primary" id="csv-btn">Save for ERP (CSV)</button>
+      </div>
+      <div id="print-area">
+        <div class="rxsheet">
+          <div class="rx-contact">Cell: ${escapeHtml(CLINIC.cell)}<br>L.L: ${escapeHtml(CLINIC.landline)}</div>
+          <div class="rx-title">AL-MADINA POLYCLINIC &amp; LABORATORIES</div>
+          <div class="rx-addr">${CLINIC.addressLine}</div>
+          <div class="rx-head">
+            <div class="rx-doc">
+              <div class="rx-doc-name">${escapeHtml(doc.name)}</div>
+              ${doc.quals.map(q => `<div class="rx-q">${escapeHtml(q)}</div>`).join('')}
+            </div>
+            <div class="rx-cad" aria-hidden="true">
+              <svg viewBox="0 0 40 64" width="40" height="64"><g fill="none" stroke="#0b2e6b" stroke-width="2.2" stroke-linecap="round"><line x1="20" y1="6" x2="20" y2="60"/><circle cx="20" cy="6" r="3" fill="#0b2e6b"/><path d="M20 14 C8 18 8 26 20 30 C32 34 32 42 20 46"/><path d="M20 14 C32 18 32 26 20 30 C8 34 8 42 20 46"/><path d="M9 12 C2 14 4 22 12 20"/><path d="M31 12 C38 14 36 22 28 20"/></g></svg>
+            </div>
+            <div class="rx-timing">
+              <div class="rx-th">TIMING</div>
+              ${doc.timing.map(t => `<div>${escapeHtml(t)}</div>`).join('')}
+            </div>
+          </div>
+          <div class="rx-dated">Dated: <b>${formatDate(rx.created_at)}</b></div>
+          <div class="rx-rule"></div>
+          <div class="rx-patient">
+            <span><b>Patient's Name:</b> ${escapeHtml(p.name || '')}</span>
+            <span><b>Age:</b> ${escapeHtml(ageGender)}</span>
+            <span><b>Weight:</b> </span>
+            <span><b>R/o:</b> </span>
+          </div>
+          <div class="rx-rule"></div>
+          <div class="rx-body">
+            <div class="rx-inv">Investigations</div>
+            <div class="rx-content">
+              <div class="rx-symbol">℞</div>
+              ${rx.notes ? `<div class="rx-notes"><b>Diagnosis / Advice:</b> ${escapeHtml(rx.notes)}</div>` : ''}
+              ${meds.length === 0 ? '' : `<ol class="rx-meds">${meds.map(m => `
+                <li><span class="m-nm">${escapeHtml(m.name)}${m.dosage ? ' — ' + escapeHtml(m.dosage) : ''}</span>
+                <span class="m-dt">${[m.frequency, m.duration, m.quantity ? 'Qty ' + m.quantity : '', m.instructions].filter(Boolean).map(escapeHtml).join('  ·  ')}</span></li>`).join('')}</ol>`}
+            </div>
+          </div>
+          <div class="rx-foot">
+            <div>VALID FOR 2 VISITS WITHIN 14 DAYS ONLY</div>
+            <div class="rx-foot-it">All the Lab investigations are done here</div>
           </div>
         </div>
-        <div class="info-row">
-          <div><div class="label-sm">Patient</div><div class="val">${escapeHtml(p.name||'-')}</div></div>
-          <div><div class="label-sm">Phone</div><div class="val">${escapeHtml(p.phone||'-')}</div></div>
-          <div><div class="label-sm">Age / Gender</div><div class="val">${escapeHtml(p.age ?? '-')} / ${escapeHtml(p.gender||'-')}</div></div>
-          <div><div class="label-sm">Token</div><div class="val">#${rx.visits?.token_number ?? '-'}</div></div>
-          <div><div class="label-sm">Doctor</div><div class="val">${escapeHtml(rx.doctor_name||'-')}</div></div>
-          <div><div class="label-sm">Date</div><div class="val">${formatDate(rx.created_at)}</div></div>
-        </div>
-        ${rx.notes ? `<div style="margin-bottom:16px;"><div class="label-sm">Notes</div><div>${escapeHtml(rx.notes)}</div></div>` : ''}
-        ${rx.medicines.length === 0 ? '<div class="empty">No medicines</div>' : `
-        <table><thead><tr><th>Medicine</th><th>Dosage</th><th>Frequency</th><th>Duration</th><th>Qty</th><th>Instructions</th></tr></thead>
-        <tbody>${rx.medicines.map(m => `<tr><td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.dosage||'-')}</td><td>${escapeHtml(m.frequency||'-')}</td><td>${escapeHtml(m.duration||'-')}</td><td>${escapeHtml(m.quantity||'-')}</td><td>${escapeHtml(m.instructions||'-')}</td></tr>`).join('')}</tbody></table>`}
-      </div></div>`;
+      </div>`;
     const pb = $('print-btn'); if (pb) pb.addEventListener('click', () => window.print());
     const cb = $('csv-btn'); if (cb) cb.addEventListener('click', () => exportCsv(rx));
   }
