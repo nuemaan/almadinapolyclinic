@@ -50,6 +50,8 @@ function isCurrentBooking(b) { return currentSession && b.session_date === curre
 // morning when it is already evening). Past bookings are dropped so an old
 // ticket from a previous day never lingers or mixes with a new one.
 function isPastBooking(b) {
+  // Legacy/corrupt entries (older app version with no stored date) -> drop.
+  if (!b || !b.session_date || isNaN(new Date(b.session_date + 'T00:00:00').getTime())) return true;
   if (!currentSession) return false;
   if (b.session_date < currentSession.session_date) return true;
   if (b.session_date === currentSession.session_date && currentSession.session === 'pm' && b.session === 'am') return true;
