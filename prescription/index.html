@@ -273,13 +273,18 @@
   }
 
   .hidden { display: none !important; }
+  @page { size: A4 portrait; margin: 10mm; }
   @media print {
+    html, body { height: auto; }
     body * { visibility: hidden; }
     #print-area, #print-area * { visibility: visible; }
-    #print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 24px; background: #fff; }
+    #print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 0; background: #fff; }
     #print-area .no-print { display: none !important; }
-    .rxsheet { border: none; max-width: none; }
-    .rx-body { min-height: 540px; }
+    /* Fill exactly one A4 page: the Rx area flexes to absorb leftover space
+       instead of a fixed min-height that could push onto a second page. */
+    .rxsheet { border: none; max-width: none; padding: 0; display: flex; flex-direction: column; min-height: 270mm; }
+    .rx-body { flex: 1 1 auto; min-height: 0; }
+    .rx-head, .rx-consult, .rx-foot, .rx-meds li { page-break-inside: avoid; break-inside: avoid; }
     .toast { display: none !important; }
   }
 </style>
