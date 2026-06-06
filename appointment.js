@@ -114,7 +114,7 @@ function renderTicket(patients) {
 
   // "When" banner — one line per booking with its session label
   $('ticket-when').innerHTML = patients.map(p =>
-    `<span class="tw-row">🗓 <b>${sessionLabel(p.session_date, p.session)}</b>${patients.length > 1 ? ` · #${p.token}` : ''}<span class="tw-date">${fullDate(p.session_date)}</span></span>`
+    `<span class="tw-row">🗓 <b>${sessionLabel(p.session_date, p.session)}</b>${patients.length > 1 ? ` · #${p.token}` : ''}<span class="tw-date">${fullDate(p.session_date)}</span><span class="tw-turn" data-token="${p.token}"></span></span>`
   ).join('');
 
   // Friendly routing message (from the latest booking)
@@ -136,32 +136,55 @@ function renderTicket(patients) {
 }
 
 async function refreshStatus() {
-  const saved = loadSaved(); if (!saved) return;
-  const current = saved.patients.filter(isCurrentBooking);
+  const saved = pruneSaved(); if (!saved) return;
+  const current = saved.patients.filter(isCurrentBooking).sort((a, b) => a.token - b.token);
   if (!current.length) return;
-  const primary = Math.min(...current.map(p => p.token));
   try {
-    const { data, error } = await sb.rpc('queue_status', { p_token: primary });
-    if (error) throw error;
-    paintStatus(data);
+    const results = [];
+    for (const p of current) {
+      const { data, error } = await sb.rpc('queue_status', { p_token: p.token });
+      if (!error && data) results.push({ token: p.token, s: data });
+    }
+    if (!results.length) return;
+    const first = results[0].s;
+    // session-level cells (same for everyone)
+    $('ts-attended').textContent = first.attended ?? 0;
+    $('ts-serving').textContent = first.now_serving != null ? '#' + first.now_serving : '—';
+    // per-patient turn time next to each number
+    results.forEach(({ token, s }) => {
+      const span = document.querySelector(`.tw-turn[data-token="${token}"]`);
+      if (span) span.textContent = shortTurn(s);
+    });
+    // headline eta cell → the earliest of this device's patients
+    paintEta(first, results.length > 1 ? `#${results[0].token} ` : '');
   } catch (e) { console.warn('status poll failed', e); }
 }
 
-function paintStatus(s) {
-  $('ts-attended').textContent = s.attended ?? 0;
-  $('ts-serving').textContent = s.now_serving != null ? '#' + s.now_serving : '—';
-  const lbl = $('ts-eta-label'), el = $('ts-eta'), st = s.your_status;
-  const started = !s.session_open || new Date(s.session_open) <= new Date(s.server_now || Date.now());
-  const turn = s.turn_at ? new Date(s.turn_at)
-             : new Date(new Date(s.server_now || Date.now()).getTime() + (s.eta_seconds || 0) * 1000);
-  const turnStr = turn.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+function turnTime(s) {
+  return s.turn_at ? new Date(s.turn_at)
+    : new Date(new Date(s.server_now || Date.now()).getTime() + (s.eta_seconds || 0) * 1000);
+}
+function sessionStarted(s) { return !s.session_open || new Date(s.session_open) <= new Date(s.server_now || Date.now()); }
+function hhmm(d) { return d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }); }
 
+// compact per-number badge shown in the "when" rows
+function shortTurn(s) {
+  const st = s.your_status;
+  if (st === 'done') return '✅ seen';
+  if (st === 'attending') return '🔔 your turn now';
+  if (st === 'cancelled' || st === 'noshow') return 'check reception';
+  if ((s.ahead ?? 0) === 0 && sessionStarted(s)) return "⏳ you're next";
+  return '⏳ ~' + hhmm(turnTime(s));
+}
+
+function paintEta(s, prefix) {
+  const lbl = $('ts-eta-label'), el = $('ts-eta'), st = s.your_status;
   if (st === 'done') { lbl.textContent = '✅ Status'; el.textContent = 'Seen — thank you!'; }
   else if (st === 'attending') { lbl.textContent = '🔔 Status'; el.textContent = "It's your turn now!"; }
   else if (st === 'cancelled' || st === 'noshow') { lbl.textContent = 'ℹ️ Status'; el.textContent = 'Please check at reception'; }
-  else if ((s.ahead ?? 0) === 0 && started) { lbl.textContent = '⏳ Your turn (approx.)'; el.textContent = "You're next!"; }
-  else if (!started) { lbl.textContent = `⏳ Session starts · turn at approx.`; el.textContent = turnStr; }
-  else { lbl.textContent = `⏳ ${s.ahead} ahead · turn at approx.`; el.textContent = turnStr; }
+  else if ((s.ahead ?? 0) === 0 && sessionStarted(s)) { lbl.textContent = `⏳ ${prefix}Your turn (approx.)`; el.textContent = "You're next!"; }
+  else if (!sessionStarted(s)) { lbl.textContent = `⏳ ${prefix}Session starts · turn approx.`; el.textContent = hhmm(turnTime(s)); }
+  else { lbl.textContent = `⏳ ${prefix}${s.ahead} ahead · turn approx.`; el.textContent = hhmm(turnTime(s)); }
 }
 
 // ---- networking ----
