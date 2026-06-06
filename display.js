@@ -30,7 +30,8 @@ function appointmentBaseURL() {
 
 async function buildScanURL() {
   const base = appointmentBaseURL();
-  const token = await window.QueueToken.current();
+  // Stable token: the QR stays the same so it can be printed and never expires.
+  const token = window.QueueToken.scanToken();
   const sep = base.includes('?') ? '&' : '?';
   return `${base}${sep}t=${token}`;
 }
