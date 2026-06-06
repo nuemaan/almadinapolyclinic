@@ -273,12 +273,13 @@
   }
 
   .hidden { display: none !important; }
-  @page { size: A4 portrait; margin: 10mm; }
+  /* margin:0 removes the browser's own date/title/URL header & footer */
+  @page { size: A4 portrait; margin: 0; }
   @media print {
     html, body { height: auto; }
     body * { visibility: hidden; }
     #print-area, #print-area * { visibility: visible; }
-    #print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 0; background: #fff; }
+    #print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 12mm; background: #fff; }
     #print-area .no-print { display: none !important; }
     /* Fill exactly one A4 page: the Rx area flexes to absorb leftover space
        instead of a fixed min-height that could push onto a second page. */
