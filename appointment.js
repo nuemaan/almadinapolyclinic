@@ -183,7 +183,7 @@ function paintEta(s, prefix) {
   else if (st === 'attending') { lbl.textContent = '🔔 Status'; el.textContent = "It's your turn now!"; }
   else if (st === 'cancelled' || st === 'noshow') { lbl.textContent = 'ℹ️ Status'; el.textContent = 'Please check at reception'; }
   else if ((s.ahead ?? 0) === 0 && sessionStarted(s)) { lbl.textContent = `⏳ ${prefix}Your turn (approx.)`; el.textContent = "You're next!"; }
-  else if (!sessionStarted(s)) { lbl.textContent = `⏳ ${prefix}Session starts · turn approx.`; el.textContent = hhmm(turnTime(s)); }
+  else if ((s.ahead ?? 0) === 0) { lbl.textContent = `⏳ ${prefix}Your turn (approx.)`; el.textContent = hhmm(turnTime(s)); }
   else { lbl.textContent = `⏳ ${prefix}${s.ahead} ahead · turn approx.`; el.textContent = hhmm(turnTime(s)); }
 }
 
