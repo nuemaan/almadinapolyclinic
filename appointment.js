@@ -151,15 +151,17 @@ function paintStatus(s) {
   $('ts-attended').textContent = s.attended ?? 0;
   $('ts-serving').textContent = s.now_serving != null ? '#' + s.now_serving : '—';
   const lbl = $('ts-eta-label'), el = $('ts-eta'), st = s.your_status;
+  const started = !s.session_open || new Date(s.session_open) <= new Date(s.server_now || Date.now());
+  const turn = s.turn_at ? new Date(s.turn_at)
+             : new Date(new Date(s.server_now || Date.now()).getTime() + (s.eta_seconds || 0) * 1000);
+  const turnStr = turn.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+
   if (st === 'done') { lbl.textContent = '✅ Status'; el.textContent = 'Seen — thank you!'; }
   else if (st === 'attending') { lbl.textContent = '🔔 Status'; el.textContent = "It's your turn now!"; }
   else if (st === 'cancelled' || st === 'noshow') { lbl.textContent = 'ℹ️ Status'; el.textContent = 'Please check at reception'; }
-  else if ((s.ahead ?? 0) === 0) { lbl.textContent = '⏳ Your turn (approx.)'; el.textContent = "You're next!"; }
-  else {
-    lbl.textContent = `⏳ ${s.ahead} ahead · turn at approx.`;
-    const now = s.server_now ? new Date(s.server_now) : new Date();
-    el.textContent = new Date(now.getTime() + (s.eta_seconds || 0) * 1000).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
-  }
+  else if ((s.ahead ?? 0) === 0 && started) { lbl.textContent = '⏳ Your turn (approx.)'; el.textContent = "You're next!"; }
+  else if (!started) { lbl.textContent = `⏳ Session starts · turn at approx.`; el.textContent = turnStr; }
+  else { lbl.textContent = `⏳ ${s.ahead} ahead · turn at approx.`; el.textContent = turnStr; }
 }
 
 // ---- networking ----
