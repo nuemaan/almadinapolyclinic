@@ -246,8 +246,25 @@
   .rx-meds li { margin-bottom: 14px; font-size: 14px; }
   .rx-meds .m-nm { font-weight: 700; display: block; }
   .rx-meds .m-dt { font-size: 12.5px; color: #333; }
-  .rx-foot { border-top: 2px solid #0b1f3a; margin-top: 12px; padding-top: 8px; text-align: center; font-size: 12px; font-weight: 800; }
+  .rx-web { text-align: center; font-size: 11.5px; font-weight: 700; color: #0b2e6b; margin-top: 3px; }
+  .rx-doc-role { font-weight: 800; font-size: 12px; color: #0b2e6b; margin-bottom: 4px; }
+  .rx-worked { font-size: 10px; font-weight: 600; color: #333; margin-top: 5px; line-height: 1.4; }
+  .rx-tline { margin-bottom: 4px; }
+  .rx-consult { border: 1px dashed #0b2e6b; border-radius: 8px; padding: 7px 10px; margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; }
+  .rx-consult-h { font-weight: 800; font-size: 11px; color: #0b2e6b; text-transform: uppercase; letter-spacing: .04em; width: 100%; }
+  .rx-c { font-size: 11px; }
+  .rx-meta { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; margin-top: 12px; }
+  .rx-sign { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; gap: 16px; }
+  .rx-next { font-size: 12.5px; }
+  .rx-sig { text-align: center; }
+  .rx-sig-name { display: block; font-weight: 800; color: #0b2e6b; font-size: 13px; border-top: 1px solid #0b1f3a; padding-top: 3px; min-width: 170px; }
+  .rx-sig-lbl { font-size: 10.5px; color: var(--muted); }
+  .rx-foot { border-top: 2px solid #0b1f3a; margin-top: 12px; padding-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 800; }
+  .rx-foot-main { text-align: center; flex: 1; }
+  .rx-foot-strong { font-size: 12.5px; }
   .rx-foot-it { font-style: italic; font-weight: 600; }
+  .rx-foot-qr { text-align: center; font-size: 9.5px; font-weight: 700; color: #0b2e6b; line-height: 1.2; }
+  .rx-foot-qr img { display: block; margin: 0 auto 2px; }
   @media (max-width: 640px) {
     .rxsheet { padding: 14px 14px 10px; }
     .rx-head { grid-template-columns: 1fr; }
@@ -255,6 +272,8 @@
     .rx-body { grid-template-columns: 1fr; min-height: 0; }
     .rx-content { border-left: none; padding-left: 0; }
     .rx-inv { padding-top: 0; }
+    .rx-foot { flex-direction: column-reverse; text-align: center; }
+    .rx-meta { flex-direction: column; gap: 4px; }
   }
 
   .hidden { display: none !important; }
@@ -399,50 +418,41 @@
     website: 'almadinapolyclinic.com',
     cell: '9596579443',
     landline: '0194-4035303 (Call Clinic Time Only)',
+    apptUrl: 'https://www.almadinapolyclinic.com/appointment.html',
     addressLine: '1ˢᵗ FLOOR AL-RAHAT CHINAR SHOPPING COMPLEX BEEHAMA GANDERBAL',
   };
 
-  // Per-doctor letterhead profiles (credentials + timing), keyed by name.
-  const DOCTORS = [
-    {
-      name: 'Dr. Rayis Ahmad Rather',
-      quals: [
-        'MD, Fellowship in Primary Care Pediatrics',
-        'PGPN (Post. Graduate in Pediatric Nutrition)',
-        'Facility Based New Born Care (FBNC)',
-        'GB Pant Children Hospital Srinagar',
-        'Life Member Academy of Pediatric Neurology',
-        'BLS (Saudi Heart Association)',
-        'SMLE Board Certified KSA',
-      ],
-      timing: ['Monday to Saturday:', ' Morning: 09:30AM – 10:30AM', ' Evening: 5:00PM – 7:00PM', 'Sunday:', ' Morning: 10:00AM – 1:30PM', ' Evening: Closed'],
-    },
-    {
-      name: 'Dr. Ajaz Ahmad Suhaff',
-      quals: [
-        'MBBS, DNB, MIPS, FSASS, LMINSC',
-        'Consultant Psychiatrist',
-        'Life Fellow – Indian Association of Geriatric Mental Health',
-        'Certified Clinical Trauma Specialist (Arizona Trauma Institute)',
-        'Specialized Training in Drug De-addiction (NIMHANS)',
-        'Certificate in Reproductive Health / Sexual Disorders (Medvarsity)',
-        'Specialized Training in Tobacco Cessation (Gujarat University)',
-      ],
-      timing: ['Every Friday', 'From 3:30 PM to 5:00 PM'],
-    },
-    {
-      name: 'Dr. Mir Laieq Ishtiyaq',
-      quals: [
-        'MBBS (SKIMS), DDVL (Dermatology, GMC Srinagar),',
-        'MRCP (UK), MRCP (London)',
-        'Regd. No.: 8901/2379',
-        'Life Member : IADVL, ACSI',
-        'Consultant Dermatologist, Physician & Dermatosurgeon',
-      ],
-      timing: ['EVERY THURSDAY', '2:00 PM'],
-    },
+  // One shared letterhead for the whole clinic: a lead doctor + visiting
+  // consultants. The consulting doctor for a given Rx is recorded separately.
+  const LEAD = {
+    name: "Dr. Rayis Ahmad Rather",
+    role: "Consultant Pediatrician",
+    quals: [
+      "MD \u00b7 Fellowship in Primary Care Pediatrics",
+      "PGPN (Post Graduate in Pediatric Nutrition)",
+      "Facility Based New Born Care (FBNC), GB Pant Children Hospital Srinagar",
+      "Life Member, Academy of Pediatric Neurology",
+      "BLS (Saudi Heart Association) \u00b7 SMLE Board Certified (KSA)",
+    ],
+    worked: [
+      "OHUD Pediatric Hospital \u2014 JCI Accredited, Madina Munawara (KSA)",
+      "Indra Prastha Apollo Hospital \u2014 JCI Accredited, New Delhi",
+      "LD Hospital \u2014 Neonatology",
+    ],
+    timing: [
+      ["Mon \u2013 Sat", "Morning 9:30\u201310:30 AM \u00b7 Evening 5:00\u20137:00 PM"],
+      ["Sunday", "Morning 10:00 AM \u2013 1:30 PM \u00b7 Evening Closed"],
+    ],
+  };
+
+  const CONSULTANTS = [
+    { name: "Dr. Ajaz Ahmad Suhaff",  spec: "Psychiatrist",   when: "Every Friday \u00b7 3:30\u20135:00 PM" },
+    { name: "Dr. Mir Laieq Ishtiyaq", spec: "Dermatologist",  when: "Every Thursday \u00b7 2:00 PM" },
+    { name: "Dr. Ajaz Ahmad Bhat",    spec: "General Surgeon", when: "Consult 3:00\u20134:00 PM \u00b7 Circumcision Sun 4 PM onwards" },
   ];
-  const docProfile = (name) => DOCTORS.find(d => d.name === name) || { name: name || 'Doctor', quals: [], timing: [] };
+
+  // Names for the consult "prescribing doctor" selector.
+  const DOCTORS = [LEAD.name, ...CONSULTANTS.map(c => c.name)];
 
   const TABS_BY_ROLE = {
     doctor:     ['doctor', 'pharmacist', 'schedule', 'lab'],
@@ -604,7 +614,7 @@
   async function renderConsult(v) {
     const p = v.patients || {};
     const detail = $('dq-detail');
-    const defaultDoc = DOCTORS.some(d => d.name === staffProfile.name) ? staffProfile.name : DOCTORS[0].name;
+    const defaultDoc = DOCTORS.includes(staffProfile.name) ? staffProfile.name : DOCTORS[0];
     detail.innerHTML = `
       <div class="card">
         <h2>Consultation — Token #${v.token_number}</h2>
@@ -623,7 +633,7 @@
             </select></div>
           <div><label>Prescribing doctor</label>
             <select id="dq-doctor">
-              ${DOCTORS.map(d => `<option ${d.name===defaultDoc?'selected':''}>${escapeHtml(d.name)}</option>`).join('')}
+              ${DOCTORS.map(d => `<option ${d===defaultDoc?'selected':''}>${escapeHtml(d)}</option>`).join('')}
             </select></div>
         </div>
         <div style="margin-top:14px;"><label>Notes / Diagnosis</label><textarea id="dq-notes" placeholder="Symptoms, diagnosis, advice…"></textarea></div>
@@ -728,9 +738,10 @@
     const el = $('rx-detail');
     if (!rx) { el.innerHTML = '<div class="card"><div class="empty">Select a prescription</div></div>'; return; }
     const p = rx.patients || {};
-    const doc = docProfile(rx.doctor_name);
     const ageGender = [p.age ? p.age + 'y' : '', p.gender || ''].filter(Boolean).join(' / ') || '—';
     const meds = rx.medicines || [];
+    const qr = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=' + encodeURIComponent(CLINIC.apptUrl);
+    const cad = '<svg viewBox="0 0 40 64" width="38" height="60"><g fill="none" stroke="#0b2e6b" stroke-width="2.2" stroke-linecap="round"><line x1="20" y1="6" x2="20" y2="60"/><circle cx="20" cy="6" r="3" fill="#0b2e6b"/><path d="M20 14 C8 18 8 26 20 30 C32 34 32 42 20 46"/><path d="M20 14 C32 18 32 26 20 30 C8 34 8 42 20 46"/><path d="M9 12 C2 14 4 22 12 20"/><path d="M31 12 C38 14 36 22 28 20"/></g></svg>';
     el.innerHTML = `
       <div class="no-print actions" style="margin-bottom:12px;">
         <button class="secondary" id="print-btn">🖨 Print</button>
@@ -741,20 +752,28 @@
           <div class="rx-contact">Cell: ${escapeHtml(CLINIC.cell)}<br>L.L: ${escapeHtml(CLINIC.landline)}</div>
           <div class="rx-title">AL-MADINA POLYCLINIC &amp; LABORATORIES</div>
           <div class="rx-addr">${CLINIC.addressLine}</div>
+          <div class="rx-web">🌐 ${escapeHtml(CLINIC.website)} &nbsp;·&nbsp; 📅 Book your appointment online at ${escapeHtml(CLINIC.website)}</div>
           <div class="rx-head">
             <div class="rx-doc">
-              <div class="rx-doc-name">${escapeHtml(doc.name)}</div>
-              ${doc.quals.map(q => `<div class="rx-q">${escapeHtml(q)}</div>`).join('')}
+              <div class="rx-doc-name">${escapeHtml(LEAD.name)}</div>
+              <div class="rx-doc-role">${escapeHtml(LEAD.role)}</div>
+              ${LEAD.quals.map(q => `<div class="rx-q">${escapeHtml(q)}</div>`).join('')}
+              <div class="rx-worked"><b>Worked at:</b> ${LEAD.worked.map(escapeHtml).join(' · ')}</div>
             </div>
-            <div class="rx-cad" aria-hidden="true">
-              <svg viewBox="0 0 40 64" width="40" height="64"><g fill="none" stroke="#0b2e6b" stroke-width="2.2" stroke-linecap="round"><line x1="20" y1="6" x2="20" y2="60"/><circle cx="20" cy="6" r="3" fill="#0b2e6b"/><path d="M20 14 C8 18 8 26 20 30 C32 34 32 42 20 46"/><path d="M20 14 C32 18 32 26 20 30 C8 34 8 42 20 46"/><path d="M9 12 C2 14 4 22 12 20"/><path d="M31 12 C38 14 36 22 28 20"/></g></svg>
-            </div>
+            <div class="rx-cad" aria-hidden="true">${cad}</div>
             <div class="rx-timing">
               <div class="rx-th">TIMING</div>
-              ${doc.timing.map(t => `<div>${escapeHtml(t)}</div>`).join('')}
+              ${LEAD.timing.map(([d, t]) => `<div class="rx-tline"><b>${escapeHtml(d)}</b><br>${escapeHtml(t)}</div>`).join('')}
             </div>
           </div>
-          <div class="rx-dated">Dated: <b>${formatDate(rx.created_at)}</b></div>
+          <div class="rx-consult">
+            <span class="rx-consult-h">✦ Visiting Consultants</span>
+            ${CONSULTANTS.map(c => `<span class="rx-c"><b>${escapeHtml(c.name)}</b> — ${escapeHtml(c.spec)} · ${escapeHtml(c.when)}</span>`).join('')}
+          </div>
+          <div class="rx-meta">
+            <span><b>Seen by:</b> ${escapeHtml(rx.doctor_name || LEAD.name)}</span>
+            <span><b>Dated:</b> ${formatDate(rx.created_at)}</span>
+          </div>
           <div class="rx-rule"></div>
           <div class="rx-patient">
             <span><b>Patient's Name:</b> ${escapeHtml(p.name || '')}</span>
@@ -771,11 +790,18 @@
               ${meds.length === 0 ? '' : `<ol class="rx-meds">${meds.map(m => `
                 <li><span class="m-nm">${escapeHtml(m.name)}${m.dosage ? ' — ' + escapeHtml(m.dosage) : ''}</span>
                 <span class="m-dt">${[m.frequency, m.duration, m.quantity ? 'Qty ' + m.quantity : '', m.instructions].filter(Boolean).map(escapeHtml).join('  ·  ')}</span></li>`).join('')}</ol>`}
+              <div class="rx-sign">
+                <div class="rx-next"><b>Next visit / Review on:</b> ____________</div>
+                <div class="rx-sig"><span class="rx-sig-name">${escapeHtml(rx.doctor_name || LEAD.name)}</span><span class="rx-sig-lbl">Doctor's Signature</span></div>
+              </div>
             </div>
           </div>
           <div class="rx-foot">
-            <div>VALID FOR 2 VISITS WITHIN 14 DAYS ONLY</div>
-            <div class="rx-foot-it">All the Lab investigations are done here</div>
+            <div class="rx-foot-main">
+              <div class="rx-foot-strong">VALID FOR 2 VISITS WITHIN 14 DAYS ONLY</div>
+              <div class="rx-foot-it">All the Lab investigations are done here · 🌐 ${escapeHtml(CLINIC.website)}</div>
+            </div>
+            <div class="rx-foot-qr"><img src="${qr}" alt="Scan to book" width="62" height="62"><span>Scan to<br>book online</span></div>
           </div>
         </div>
       </div>`;
