@@ -254,11 +254,7 @@
   .rx-consult-h { font-weight: 800; font-size: 11px; color: #0b2e6b; text-transform: uppercase; letter-spacing: .04em; width: 100%; }
   .rx-c { font-size: 11px; }
   .rx-meta { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; margin-top: 12px; }
-  .rx-sign { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; gap: 16px; }
-  .rx-next { font-size: 12.5px; }
-  .rx-sig { text-align: center; }
-  .rx-sig-name { display: block; font-weight: 800; color: #0b2e6b; font-size: 13px; border-top: 1px solid #0b1f3a; padding-top: 3px; min-width: 170px; }
-  .rx-sig-lbl { font-size: 10.5px; color: var(--muted); }
+  .rx-foot-note { font-size: 11px; font-weight: 700; color: #0b2e6b; margin-top: 3px; }
   .rx-foot { border-top: 2px solid #0b1f3a; margin-top: 12px; padding-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 800; }
   .rx-foot-main { text-align: center; flex: 1; }
   .rx-foot-strong { font-size: 12.5px; }
@@ -790,16 +786,13 @@
               ${meds.length === 0 ? '' : `<ol class="rx-meds">${meds.map(m => `
                 <li><span class="m-nm">${escapeHtml(m.name)}${m.dosage ? ' — ' + escapeHtml(m.dosage) : ''}</span>
                 <span class="m-dt">${[m.frequency, m.duration, m.quantity ? 'Qty ' + m.quantity : '', m.instructions].filter(Boolean).map(escapeHtml).join('  ·  ')}</span></li>`).join('')}</ol>`}
-              <div class="rx-sign">
-                <div class="rx-next"><b>Next visit / Review on:</b> ____________</div>
-                <div class="rx-sig"><span class="rx-sig-name">${escapeHtml(rx.doctor_name || LEAD.name)}</span><span class="rx-sig-lbl">Doctor's Signature</span></div>
-              </div>
             </div>
           </div>
           <div class="rx-foot">
             <div class="rx-foot-main">
               <div class="rx-foot-strong">VALID FOR 2 VISITS WITHIN 14 DAYS ONLY</div>
               <div class="rx-foot-it">All the Lab investigations are done here · 🌐 ${escapeHtml(CLINIC.website)}</div>
+              <div class="rx-foot-note">📄 Get your lab reports online at ${escapeHtml(CLINIC.website)} — enter the code from the lab desk.</div>
             </div>
             <div class="rx-foot-qr"><img src="${qr}" alt="Scan to book" width="62" height="62"><span>Scan to<br>book online</span></div>
           </div>
