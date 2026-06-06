@@ -111,6 +111,16 @@
   button.danger:hover { background: #fed7aa; }
   .actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
 
+  .stat-strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 18px; }
+  @media (max-width: 800px) { .stat-strip { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 460px) { .stat-strip { grid-template-columns: repeat(2, 1fr); } }
+  .stat-chip {
+    background: #fff; border: 1px solid rgba(13,148,136,0.1); border-radius: 14px;
+    padding: 12px 14px; box-shadow: 0 2px 10px rgba(13,148,136,0.05);
+  }
+  .stat-chip .v { font-size: 24px; font-weight: 800; color: var(--teal-dark); line-height: 1; }
+  .stat-chip .l { font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 5px; }
+
   .sch-sess { border: 1px solid var(--teal-soft); background: var(--teal-bg); border-radius: 12px; padding: 14px; }
   .sch-toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: var(--teal-dark); text-transform: none; letter-spacing: 0; margin-bottom: 10px; }
   .sch-toggle input { width: auto; }
@@ -297,6 +307,7 @@
 <main>
   <!-- DOCTOR PANEL — live queue + consult -->
   <section id="panel-doctor" class="panel active">
+    <div id="dq-stats" class="stat-strip"></div>
     <div class="pharm-layout">
       <div class="rx-list">
         <div class="rx-list-head">
@@ -527,8 +538,23 @@
     setInterval(() => { if ($('panel-doctor').classList.contains('active')) loadQueue(); }, 7000);
   }
 
+  async function renderDoctorStats() {
+    const el = $('dq-stats'); if (!el) return;
+    const { data, error } = await sb.rpc('doctor_stats');
+    if (error || !data) { el.innerHTML = ''; return; }
+    const chip = (label, val) => `<div class="stat-chip"><div class="v">${val}</div><div class="l">${label}</div></div>`;
+    el.innerHTML =
+      chip('🎟 Issued (session)', data.issued) +
+      chip('⏳ Waiting', data.waiting) +
+      chip('✅ Seen (session)', data.attended_session) +
+      chip('📅 Seen today', data.attended_today) +
+      chip('🆕 New today', data.new_today) +
+      chip('🔁 Follow-up today', data.followup_today);
+  }
+
   async function loadQueue() {
     if (!currentSession) return;
+    renderDoctorStats();
     $('dq-session').textContent = `${formatDate(currentSession.session_date)} · ${currentSession.session.toUpperCase()}`;
     const { data, error } = await sb
       .from('visits')
