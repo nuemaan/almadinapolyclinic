@@ -30,8 +30,9 @@ function appointmentBaseURL() {
 
 async function buildScanURL() {
   const base = appointmentBaseURL();
-  // Stable token: the QR stays the same so it can be printed and never expires.
-  const token = window.QueueToken.scanToken();
+  // Rotating token: the live display refreshes the QR so scans always work
+  // here, but a copied link expires within ~10-20 minutes (anti-abuse).
+  const token = await window.QueueToken.current();
   const sep = base.includes('?') ? '&' : '?';
   return `${base}${sep}t=${token}`;
 }

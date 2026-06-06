@@ -11,11 +11,6 @@ window.QueueToken = (() => {
   const SECRET = 'almadina-clinic-queue-v1-2026';
   const TOKEN_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
-  // Stable clinic scan token — the QR uses this so it NEVER expires (a printed
-  // QR or a slightly-old scan always works). The clinic display is staff-only,
-  // and walk-ins always join the current session regardless of time/schedule.
-  const SCAN_TOKEN = 'amq7f3k9scan';
-
   // Display staff key — required on display.html as ?key=<this>
   const DISPLAY_KEY = 'rayis-clinic-screen-2026';
 
@@ -50,7 +45,5 @@ window.QueueToken = (() => {
     return typeof key === 'string' && key === DISPLAY_KEY;
   }
 
-  function scanToken() { return SCAN_TOKEN; }
-
-  return { current, isValid, scanToken, checkDisplayKey, TOKEN_WINDOW_MS, DISPLAY_KEY, SCAN_TOKEN };
+  return { current, isValid, checkDisplayKey, TOKEN_WINDOW_MS, DISPLAY_KEY };
 })();
