@@ -434,10 +434,10 @@
   const docProfile = (name) => DOCTORS.find(d => d.name === name) || { name: name || 'Doctor', quals: [], timing: [] };
 
   const TABS_BY_ROLE = {
-    doctor:     ['doctor', 'pharmacist', 'schedule'],
+    doctor:     ['doctor', 'pharmacist', 'schedule', 'lab'],
     reception:  ['doctor', 'pharmacist', 'schedule', 'lab'],
     lab:        ['lab'],
-    pharmacist: ['schedule', 'pharmacist'],
+    pharmacist: ['schedule', 'pharmacist', 'lab'],
   };
 
   let staffProfile = null;   // { role, name }
