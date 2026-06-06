@@ -156,7 +156,7 @@ async function refreshStatus() {
       if (span) span.textContent = shortTurn(s);
     });
     // headline eta cell → the earliest of this device's patients
-    paintEta(first, results.length > 1 ? `#${results[0].token} ` : '');
+    paintEta(first);
   } catch (e) { console.warn('status poll failed', e); }
 }
 
@@ -177,7 +177,7 @@ function shortTurn(s) {
   return '⏳ ~' + hhmm(turnTime(s));
 }
 
-function paintEta(s, prefix) {
+function paintEta(s, prefix = '') {
   const lbl = $('ts-eta-label'), el = $('ts-eta'), st = s.your_status;
   if (st === 'done') { lbl.textContent = '✅ Status'; el.textContent = 'Seen — thank you!'; }
   else if (st === 'attending') { lbl.textContent = '🔔 Status'; el.textContent = "It's your turn now!"; }
