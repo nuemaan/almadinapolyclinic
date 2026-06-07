@@ -86,10 +86,14 @@
   input:focus, select:focus, textarea:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(13,148,136,0.12); }
 
   .med-row {
-    display: grid; grid-template-columns: 2fr 1fr 1.2fr 1fr 0.8fr 1.5fr auto;
-    gap: 10px; align-items: end; padding: 12px; background: var(--teal-bg);
-    border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--teal-soft);
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; padding: 12px;
+    background: var(--teal-bg); border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--teal-soft);
   }
+  .med-row .mf { display: flex; flex-direction: column; flex: 1 1 130px; }
+  .med-row .mf-name { flex: 2 1 200px; }
+  .med-row .mf-sm { flex: 0 1 90px; }
+  .med-row .mf-rm { flex: 0 0 auto; }
+  .med-row .mf > input, .med-row .mf > select { width: 100%; }
   .med-row label { font-size: 10px; }
 
   button.primary {
@@ -145,11 +149,12 @@
     .pharm-layout { gap: 12px; }
     .rx-list { max-height: 340px; }
 
-    /* medicine rows: name + remove full width, rest two-up */
-    .med-row { grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
-    .med-row > div:first-child,
-    .med-row > div:last-child { grid-column: 1 / -1; }
-    .med-row button.danger { width: 100%; }
+    /* medicine rows: fields go two-up, name full width */
+    .med-row { gap: 8px; padding: 10px; }
+    .med-row .mf { flex: 1 1 45%; }
+    .med-row .mf-name { flex: 1 1 100%; }
+    .med-row .mf-rm { flex: 1 1 100%; }
+    .med-row .mf-rm button.danger { width: 100%; }
 
     /* wide tables scroll horizontally instead of squishing */
     .card table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
@@ -242,6 +247,8 @@
   .rx-content { border-left: 2px solid #0b1f3a; padding: 8px 0 0 18px; }
   .rx-symbol { font-size: 34px; font-weight: 800; color: #0b2e6b; line-height: 1; }
   .rx-notes { font-size: 13px; margin: 8px 0 14px; }
+  .rx-line2 { font-size: 13px; margin: 2px 0 6px; }
+  .rx-inv-list { font-weight: 600; font-size: 12px; margin-top: 6px; line-height: 1.5; }
   .rx-meds { margin: 10px 0 0 20px; padding: 0; }
   .rx-meds li { margin-bottom: 14px; font-size: 14px; }
   .rx-meds .m-nm { font-weight: 700; display: block; }
@@ -455,6 +462,19 @@
   // Names for the consult "prescribing doctor" selector.
   const DOCTORS = [LEAD.name, ...CONSULTANTS.map(c => c.name)];
 
+  // Dropdown option sets for the consultation form.
+  const MED_TYPES = ['Drops', 'Syrup', 'Tablet', 'Injection', 'Nebulization', 'Per rectum'];
+  const DOSE_UNITS = ['ml', 'mg'];
+  const INSTRUCTIONS = ['Before breakfast', 'Bed time', 'After food'];
+  const EXAM = {
+    general: ['Fair', 'Sick'],
+    chest:   ['Bilateral equal air entry', 'Bilateral wheeze', 'Bilateral crepts (right)', 'Bilateral crepts (left)', 'Bilateral crepts (both)'],
+    abdomen: ['Soft, non-tender, non-distended'],
+    cvs:     ['S1+S2+No murmur', 'S1+S2+Murmur'],
+  };
+  const optionsHtml = (items, sel) => items.map(i => `<option ${i === sel ? 'selected' : ''}>${escapeHtml(i)}</option>`).join('');
+  const examSelect = (id, items, sel) => `<select id="${id}"><option value="">— select —</option>${optionsHtml(items, sel)}</select>`;
+
   const TABS_BY_ROLE = {
     doctor:     ['doctor', 'pharmacist', 'schedule', 'lab'],
     reception:  ['doctor', 'pharmacist', 'schedule', 'lab'],
@@ -600,15 +620,26 @@
   function makeMedRow(med = {}) {
     const div = document.createElement('div');
     div.className = 'med-row';
+    const instPreset = INSTRUCTIONS.includes(med.instructions) ? med.instructions : (med.instructions ? 'Custom' : '');
+    const isCustom = instPreset === 'Custom';
     div.innerHTML = `
-      <div><label>Medicine</label><input class="m-name" placeholder="e.g. Paracetamol" value="${escapeHtml(med.name||'')}"></div>
-      <div><label>Dosage</label><input class="m-dosage" placeholder="500mg" value="${escapeHtml(med.dosage||'')}"></div>
-      <div><label>Frequency</label><input class="m-freq" placeholder="Twice daily" value="${escapeHtml(med.frequency||'')}"></div>
-      <div><label>Duration</label><input class="m-dur" placeholder="5 days" value="${escapeHtml(med.duration||'')}"></div>
-      <div><label>Qty</label><input class="m-qty" type="number" min="0" placeholder="10" value="${escapeHtml(med.quantity||'')}"></div>
-      <div><label>Instructions</label><input class="m-inst" placeholder="After food" value="${escapeHtml(med.instructions||'')}"></div>
-      <div><button class="danger" type="button">✕</button></div>`;
+      <div class="mf mf-name"><label>Medicine</label><input class="m-name" placeholder="e.g. Paracetamol" value="${escapeHtml(med.name||'')}"></div>
+      <div class="mf"><label>Type</label><select class="m-type"><option value="">—</option>${optionsHtml(MED_TYPES, med.type)}</select></div>
+      <div class="mf mf-sm"><label>Dosage</label><input class="m-dosage" placeholder="5" value="${escapeHtml(med.dosage||'')}"></div>
+      <div class="mf mf-sm"><label>Unit</label><select class="m-unit"><option value="">—</option>${optionsHtml(DOSE_UNITS, med.unit)}</select></div>
+      <div class="mf"><label>Frequency</label><input class="m-freq" placeholder="Twice daily" value="${escapeHtml(med.frequency||'')}"></div>
+      <div class="mf mf-sm"><label>Duration</label><input class="m-dur" placeholder="5 days" value="${escapeHtml(med.duration||'')}"></div>
+      <div class="mf mf-sm"><label>Qty</label><input class="m-qty" type="number" min="0" placeholder="10" value="${escapeHtml(med.quantity||'')}"></div>
+      <div class="mf"><label>Instructions</label><select class="m-inst"><option value="">—</option>${optionsHtml(INSTRUCTIONS, instPreset)}<option ${isCustom?'selected':''}>Custom</option></select></div>
+      <div class="mf m-cust-wrap" style="${isCustom?'':'display:none'}"><label>Custom instruction</label><input class="m-inst-custom" placeholder="Type instruction" value="${isCustom?escapeHtml(med.instructions||''):''}"></div>
+      <div class="mf mf-rm"><button class="danger" type="button">✕</button></div>`;
     div.querySelector('button.danger').addEventListener('click', () => div.remove());
+    const inst = div.querySelector('.m-inst'), wrap = div.querySelector('.m-cust-wrap'), cust = div.querySelector('.m-inst-custom');
+    inst.addEventListener('change', () => {
+      const show = inst.value === 'Custom';
+      wrap.style.display = show ? '' : 'none';
+      if (show) cust.focus();
+    });
     return div;
   }
 
@@ -638,7 +669,20 @@
             </select></div>
         </div>
         <div style="margin-top:12px;"><label>Residence (R/o)</label><input id="dq-residence" value="${escapeHtml(p.residence || '')}" placeholder="Village / town"></div>
-        <div style="margin-top:14px;"><label>Notes / Diagnosis</label><textarea id="dq-notes" placeholder="Symptoms, diagnosis, advice…"></textarea></div>
+      </div>
+
+      <div class="card">
+        <h2>History &amp; Examination</h2>
+        <div><label>Complaint</label><textarea id="dq-complaint" placeholder="Presenting complaint…"></textarea></div>
+        <div style="margin-top:14px; margin-bottom:8px; font-weight:800; font-size:12px; color:var(--teal-dark); text-transform:uppercase; letter-spacing:.04em;">Clinical Examination</div>
+        <div class="grid-2">
+          <div><label>General condition</label>${examSelect('dq-ex-general', EXAM.general)}</div>
+          <div><label>Chest</label>${examSelect('dq-ex-chest', EXAM.chest)}</div>
+          <div><label>Abdomen</label>${examSelect('dq-ex-abdomen', EXAM.abdomen)}</div>
+          <div><label>CVS</label>${examSelect('dq-ex-cvs', EXAM.cvs)}</div>
+        </div>
+        <div style="margin-top:14px;"><label>Provisional Diagnosis</label><input id="dq-diagnosis" placeholder="e.g. Viral fever"></div>
+        <div style="margin-top:12px;"><label>Lab Investigation</label><textarea id="dq-lab" placeholder="Tests to order (CBC, CRP, X-ray…)"></textarea></div>
       </div>
 
       <div class="card">
@@ -675,38 +719,54 @@
     // Per-child history: previous prescriptions for THIS patient (not siblings
     // on the same phone). Identity is now (phone + name).
     const { data, error } = await sb.from('prescriptions')
-      .select('created_at,doctor_name,notes,medicines')
+      .select('created_at,doctor_name,notes,medicines,complaint,diagnosis')
       .eq('patient_id', pid).order('created_at', { ascending: false }).limit(10);
     if (error) { el.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
     if (!data.length) { el.innerHTML = '<div class="empty">First visit — no previous prescriptions.</div>'; return; }
+    const sub = (rx) => rx.diagnosis || rx.complaint || rx.notes || '';
     el.innerHTML = data.map(rx => `
       <details class="hist-item">
         <summary>${formatDate(rx.created_at)} · ${escapeHtml(rx.doctor_name||'')} · ${rx.medicines.length} medicine${rx.medicines.length===1?'':'s'}</summary>
-        ${rx.notes ? `<div class="hist-note" style="margin-top:8px;">${escapeHtml(rx.notes)}</div>` : ''}
-        <div class="h-meds">${rx.medicines.map(m => `• <strong>${escapeHtml(m.name)}</strong> ${escapeHtml(m.dosage||'')} — ${escapeHtml(m.frequency||'')}, ${escapeHtml(m.duration||'')} ${m.instructions?('('+escapeHtml(m.instructions)+')'):''}`).join('<br>')}</div>
+        ${sub(rx) ? `<div class="hist-note" style="margin-top:8px;">${escapeHtml(sub(rx))}</div>` : ''}
+        <div class="h-meds">${rx.medicines.map(m => `• <strong>${escapeHtml(m.name)}</strong>${m.type?' ('+escapeHtml(m.type)+')':''} ${escapeHtml([m.dosage,m.unit].filter(Boolean).join(' '))} — ${escapeHtml(m.frequency||'')}, ${escapeHtml(m.duration||'')} ${m.instructions?('('+escapeHtml(m.instructions)+')'):''}`).join('<br>')}</div>
       </details>`).join('');
   }
 
   async function saveConsult(v) {
-    const meds = Array.from(document.querySelectorAll('#med-rows .med-row')).map(r => ({
-      name: r.querySelector('.m-name').value.trim(),
-      dosage: r.querySelector('.m-dosage').value.trim(),
-      frequency: r.querySelector('.m-freq').value.trim(),
-      duration: r.querySelector('.m-dur').value.trim(),
-      quantity: r.querySelector('.m-qty').value.trim(),
-      instructions: r.querySelector('.m-inst').value.trim(),
-    })).filter(m => m.name);
+    const meds = Array.from(document.querySelectorAll('#med-rows .med-row')).map(r => {
+      const instSel = r.querySelector('.m-inst').value;
+      const instructions = instSel === 'Custom' ? r.querySelector('.m-inst-custom').value.trim() : instSel;
+      return {
+        name: r.querySelector('.m-name').value.trim(),
+        type: r.querySelector('.m-type').value,
+        dosage: r.querySelector('.m-dosage').value.trim(),
+        unit: r.querySelector('.m-unit').value,
+        frequency: r.querySelector('.m-freq').value.trim(),
+        duration: r.querySelector('.m-dur').value.trim(),
+        quantity: r.querySelector('.m-qty').value.trim(),
+        instructions,
+      };
+    }).filter(m => m.name);
     if (meds.length === 0 && !confirm('No medicines added. Save prescription anyway and mark the patient as seen?')) return;
 
+    const examination = {
+      general: $('dq-ex-general').value || null,
+      chest:   $('dq-ex-chest').value || null,
+      abdomen: $('dq-ex-abdomen').value || null,
+      cvs:     $('dq-ex-cvs').value || null,
+    };
     $('save-rx-btn').disabled = true;
     const { error } = await sb.rpc('save_prescription', {
       p_visit_id: v.id,
       p_doctor_name: ($('dq-doctor') && $('dq-doctor').value) || staffProfile.name,
-      p_notes: $('dq-notes').value.trim(),
       p_medicines: meds,
       p_age: $('dq-age').value ? parseInt($('dq-age').value, 10) : null,
       p_gender: $('dq-gender').value || null,
       p_residence: $('dq-residence').value.trim() || null,
+      p_complaint: $('dq-complaint').value.trim() || null,
+      p_examination: examination,
+      p_diagnosis: $('dq-diagnosis').value.trim() || null,
+      p_lab: $('dq-lab').value.trim() || null,
     });
     $('save-rx-btn').disabled = false;
     if (error) { toast('Save failed: ' + error.message, '#ef4444'); return; }
@@ -720,7 +780,7 @@
   let selectedRx = null;
   async function loadPrescriptions() {
     const { data, error } = await sb.from('prescriptions')
-      .select('id,created_at,doctor_name,notes,medicines,patients(name,phone,age,gender,residence),visits(token_number)')
+      .select('id,created_at,doctor_name,notes,medicines,complaint,examination,diagnosis,lab_advice,patients(name,phone,age,gender,residence),visits(token_number)')
       .order('created_at', { ascending: false }).limit(100);
     const list = $('rx-list'), detail = $('rx-detail');
     if (error) { list.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
@@ -743,6 +803,19 @@
     const p = rx.patients || {};
     const ageGender = [p.age ? p.age + 'y' : '', p.gender || ''].filter(Boolean).join(' / ') || '—';
     const meds = rx.medicines || [];
+    const exam = rx.examination || {};
+    const examText = [
+      exam.general ? 'Gen: ' + exam.general : '',
+      exam.chest ? 'Chest: ' + exam.chest : '',
+      exam.abdomen ? 'Abd: ' + exam.abdomen : '',
+      exam.cvs ? 'CVS: ' + exam.cvs : '',
+    ].filter(Boolean).join('  ·  ');
+    const medLine = (m) => {
+      const dose = [m.dosage, m.unit].filter(Boolean).join(' ');
+      const head = m.name + (m.type ? ' (' + m.type + ')' : '') + (dose ? ' — ' + dose : '');
+      const det = [m.frequency, m.duration, m.quantity ? 'Qty ' + m.quantity : '', m.instructions].filter(Boolean).join('  ·  ');
+      return `<li><span class="m-nm">${escapeHtml(head)}</span>${det ? `<span class="m-dt">${escapeHtml(det)}</span>` : ''}</li>`;
+    };
     const qr = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=' + encodeURIComponent(CLINIC.apptUrl);
     const cad = '<svg viewBox="0 0 64 96" width="46" height="70" fill="none" stroke="#0b2e6b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="8" r="3.5" fill="#0b2e6b" stroke="none"/><line x1="32" y1="11" x2="32" y2="90"/><path d="M32 21 C23 13 11 12 4 18 C13 18 19 21 23 25"/><path d="M32 21 C41 13 53 12 60 18 C51 18 45 21 41 25"/><path d="M32 25 C18 31 18 41 32 47 C46 53 46 63 32 69 C20 74 20 83 32 89"/><path d="M32 25 C46 31 46 41 32 47 C18 53 18 63 32 69 C44 74 44 83 32 89"/><circle cx="24" cy="27" r="1.7" fill="#0b2e6b" stroke="none"/><circle cx="40" cy="27" r="1.7" fill="#0b2e6b" stroke="none"/></svg>';
     el.innerHTML = `
@@ -785,13 +858,13 @@
           </div>
           <div class="rx-rule"></div>
           <div class="rx-body">
-            <div class="rx-inv">Investigations</div>
+            <div class="rx-inv">Investigations${rx.lab_advice ? `<div class="rx-inv-list">${escapeHtml(rx.lab_advice).replace(/\n/g, '<br>')}</div>` : ''}</div>
             <div class="rx-content">
+              ${rx.complaint ? `<div class="rx-line2"><b>Complaint:</b> ${escapeHtml(rx.complaint)}</div>` : ''}
+              ${examText ? `<div class="rx-line2"><b>O/E:</b> ${escapeHtml(examText)}</div>` : ''}
+              ${rx.diagnosis ? `<div class="rx-line2"><b>Provisional Diagnosis:</b> ${escapeHtml(rx.diagnosis)}</div>` : ''}
               <div class="rx-symbol">℞</div>
-              ${rx.notes ? `<div class="rx-notes"><b>Diagnosis / Advice:</b> ${escapeHtml(rx.notes)}</div>` : ''}
-              ${meds.length === 0 ? '' : `<ol class="rx-meds">${meds.map(m => `
-                <li><span class="m-nm">${escapeHtml(m.name)}${m.dosage ? ' — ' + escapeHtml(m.dosage) : ''}</span>
-                <span class="m-dt">${[m.frequency, m.duration, m.quantity ? 'Qty ' + m.quantity : '', m.instructions].filter(Boolean).map(escapeHtml).join('  ·  ')}</span></li>`).join('')}</ol>`}
+              ${meds.length === 0 ? '' : `<ol class="rx-meds">${meds.map(medLine).join('')}</ol>`}
             </div>
           </div>
           <div class="rx-foot">
