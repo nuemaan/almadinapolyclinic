@@ -836,7 +836,7 @@
               ${LEAD.quals.map(q => `<div class="rx-q">${escapeHtml(q)}</div>`).join('')}
               <div class="rx-worked"><b>Worked at:</b> ${LEAD.worked.map(escapeHtml).join(' · ')}</div>
             </div>
-            <div class="rx-cad"><img class="rx-cad-img" src="caduceus.png" alt="" onerror="this.closest('.rx-cad').style.display='none'"></div>
+            <div class="rx-cad"><img class="rx-cad-img" src="caduceus.png?v=2" alt="" onerror="this.closest('.rx-cad').style.display='none'"></div>
             <div class="rx-timing">
               <div class="rx-th">TIMING</div>
               ${LEAD.timing.map(([d, t]) => `<div class="rx-tline"><b>${escapeHtml(d)}</b><br>${escapeHtml(t)}</div>`).join('')}
