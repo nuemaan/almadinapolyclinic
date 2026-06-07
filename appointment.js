@@ -197,13 +197,14 @@ function friendlyError(err) {
   return null;
 }
 
-async function bookOne(name, phone, loc) {
+async function bookOne(name, phone, loc, age) {
   const { data, error } = await sb.rpc('book_appointment', {
     p_name: name, p_phone: phone,
     p_source: isWalkin ? 'walkin' : 'home',
     p_qr_token: qrToken,
     p_lat: loc ? loc.lat : null,
     p_lng: loc ? loc.lng : null,
+    p_age: age != null && age !== '' ? parseInt(age, 10) : null,
   });
   if (error) throw error;
   return data;
@@ -221,6 +222,7 @@ function showForm({ adding = false } = {}) {
     : "📍 We'll ask for your location to give you a slot you can reach in time. Your name &amp; number are shared only with the clinic.";
   $('form-error').classList.add('hidden');
   $('f-name').value = '';
+  $('f-age').value = '';
   if (adding && saved && saved.phone) $('f-phone').value = saved.phone;
   // hide the "today/hours" meta — routing decides the slot now
   const meta = document.querySelector('#state-form .appt-meta'); if (meta) meta.classList.add('hidden');
@@ -231,16 +233,18 @@ function showForm({ adding = false } = {}) {
 async function submitForm() {
   const name = $('f-name').value.trim();
   const phone = $('f-phone').value.trim();
+  const age = $('f-age').value.trim();
   const errEl = $('form-error'); errEl.classList.add('hidden');
   if (!name) { errEl.textContent = 'Please enter the patient name.'; errEl.classList.remove('hidden'); return; }
   if (phone.replace(/\D/g, '').length !== 10) { errEl.textContent = 'Please enter a 10-digit mobile number.'; errEl.classList.remove('hidden'); return; }
+  if (age === '' || isNaN(+age) || +age < 0 || +age > 120) { errEl.textContent = 'Please enter the patient age.'; errEl.classList.remove('hidden'); return; }
 
   $('book-btn').disabled = true;
   show('loading');
   $('loading-text').textContent = isWalkin ? 'Reserving your spot…' : '📍 Checking your location & finding a slot…';
   try {
     const loc = isWalkin ? null : await getLocation();
-    const res = await bookOne(name, phone, loc);
+    const res = await bookOne(name, phone, loc, age);
     const saved = pruneSaved();
     const patients = (addingMore && saved ? saved.patients : []).concat([
       { token: res.token_number, name, source: res.source, session_date: res.session_date, session: res.session, headline: res.headline, message: res.message },

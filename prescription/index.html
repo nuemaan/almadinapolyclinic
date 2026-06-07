@@ -449,7 +449,7 @@
 
   const CONSULTANTS = [
     { name: "Dr. Ajaz Ahmad Suhaff",  spec: "Psychiatrist",   when: "Every Friday \u00b7 3:30\u20135:00 PM" },
-    { name: "Dr. Mir Laieq Ishtiyaq", spec: "Dermatologist",  when: "Every Thursday \u00b7 2:00 PM" },
+    { name: "Dr. Mir Laieq Ishtiyaq", spec: "Dermatologist",  when: "Every Thursday \u00b7 3:30\u20135:00 PM" },
   ];
 
   // Names for the consult "prescribing doctor" selector.
@@ -569,7 +569,7 @@
     $('dq-session').textContent = `${formatDate(currentSession.session_date)} · ${currentSession.session.toUpperCase()}`;
     const { data, error } = await sb
       .from('visits')
-      .select('id,token_number,source,status,patients(id,name,phone,age,gender)')
+      .select('id,token_number,source,status,patients(id,name,phone,age,gender,residence)')
       .eq('session_date', currentSession.session_date)
       .eq('session', currentSession.session)
       .in('status', ['waiting', 'attending'])
@@ -637,6 +637,7 @@
               ${DOCTORS.map(d => `<option ${d===defaultDoc?'selected':''}>${escapeHtml(d)}</option>`).join('')}
             </select></div>
         </div>
+        <div style="margin-top:12px;"><label>Residence (R/o)</label><input id="dq-residence" value="${escapeHtml(p.residence || '')}" placeholder="Village / town"></div>
         <div style="margin-top:14px;"><label>Notes / Diagnosis</label><textarea id="dq-notes" placeholder="Symptoms, diagnosis, advice…"></textarea></div>
       </div>
 
@@ -705,6 +706,7 @@
       p_medicines: meds,
       p_age: $('dq-age').value ? parseInt($('dq-age').value, 10) : null,
       p_gender: $('dq-gender').value || null,
+      p_residence: $('dq-residence').value.trim() || null,
     });
     $('save-rx-btn').disabled = false;
     if (error) { toast('Save failed: ' + error.message, '#ef4444'); return; }
@@ -718,7 +720,7 @@
   let selectedRx = null;
   async function loadPrescriptions() {
     const { data, error } = await sb.from('prescriptions')
-      .select('id,created_at,doctor_name,notes,medicines,patients(name,phone,age,gender),visits(token_number)')
+      .select('id,created_at,doctor_name,notes,medicines,patients(name,phone,age,gender,residence),visits(token_number)')
       .order('created_at', { ascending: false }).limit(100);
     const list = $('rx-list'), detail = $('rx-detail');
     if (error) { list.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
@@ -779,7 +781,7 @@
             <span><b>Patient's Name:</b> ${escapeHtml(p.name || '')}</span>
             <span><b>Age:</b> ${escapeHtml(ageGender)}</span>
             <span><b>Weight:</b> </span>
-            <span><b>R/o:</b> </span>
+            <span><b>R/o:</b> ${escapeHtml(p.residence || '')}</span>
           </div>
           <div class="rx-rule"></div>
           <div class="rx-body">
