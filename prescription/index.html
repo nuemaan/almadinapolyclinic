@@ -219,6 +219,10 @@
   .login-card .brand h1 { font-size: 19px; color: var(--teal-dark); margin: 8px 0 2px; }
   .login-card .brand p { font-size: 12.5px; color: var(--muted); margin: 0; }
   .login-card label { margin-top: 12px; }
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 46px; }
+  .pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 17px; line-height: 1; padding: 6px; opacity: .7; }
+  .pw-toggle:hover { opacity: 1; }
   .login-err { color:#c2410c; background: var(--coral-soft); border-radius:10px; padding:9px 12px; font-size:13px; font-weight:700; margin-top:12px; }
   .login-card button.primary { width:100%; margin-top: 18px; padding: 12px; font-size: 15px; }
 
@@ -312,7 +316,10 @@
     <label>Email</label>
     <input id="login-email" type="email" autocomplete="username" placeholder="you@almadinapolyclinic.com" />
     <label>Password</label>
-    <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••" />
+    <div class="pw-wrap">
+      <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••" />
+      <button type="button" id="pw-toggle" class="pw-toggle" aria-label="Show password">👁</button>
+    </div>
     <div id="login-err" class="login-err hidden"></div>
     <button class="primary" id="login-btn">Sign in</button>
   </div>
@@ -531,6 +538,12 @@
 
   $('login-btn').addEventListener('click', doLogin);
   $('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  $('pw-toggle').addEventListener('click', () => {
+    const i = $('login-password'); const show = i.type === 'password';
+    i.type = show ? 'text' : 'password';
+    $('pw-toggle').textContent = show ? '🙈' : '👁';
+    i.focus();
+  });
   async function doLogin() {
     const email = $('login-email').value.trim();
     const password = $('login-password').value;
