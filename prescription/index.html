@@ -478,11 +478,22 @@
   const EXAM = {
     general: ['Fair', 'Sick'],
     chest:   ['Bilateral equal air entry', 'Bilateral wheeze', 'Bilateral crepts (right)', 'Bilateral crepts (left)', 'Bilateral crepts (both)'],
-    abdomen: ['Soft, non-tender, non-distended'],
+    abdomen: ['SOFT, NON-TENDER, NON-DISTENDED', 'TENDER EPIGASTRIUM', 'TENDER RIGHT ILIAC', 'PERIUMBILICAL'],
     cvs:     ['S1+S2+No murmur', 'S1+S2+Murmur'],
   };
+  const DIAGNOSES = ['URTI', 'WALRTI', 'PNEUMONIA', 'EXUDATIVE PHARYNGITIS', 'TONSILLITIS', 'ASOM', 'UTI', 'ENTERIC FEVER', 'ACUTE VIRAL HEPATITIS', 'FUE'];
+  const LABS = ['CBC', 'CRP', 'LFT', 'KFT', 'UE', 'WIDAL', 'TFT', 'SERUM BILIRUBIN', 'BLOOD GROUP'];
   const optionsHtml = (items, sel) => items.map(i => `<option ${i === sel ? 'selected' : ''}>${escapeHtml(i)}</option>`).join('');
   const examSelect = (id, items, sel) => `<select id="${id}"><option value="">— select —</option>${optionsHtml(items, sel)}</select>`;
+  // Dropdown with a CUSTOM option that reveals a text box.
+  const selectCustom = (id, items) =>
+    `<select id="${id}" class="has-custom"><option value="">— SELECT —</option>${optionsHtml(items)}<option value="__custom__">CUSTOM…</option></select>` +
+    `<input id="${id}-custom" class="sc-custom" placeholder="Type here" style="display:none; margin-top:6px;">`;
+  const readSelectCustom = (id) => {
+    const s = $(id); if (!s) return null;
+    if (s.value === '__custom__') return ($(id + '-custom').value.trim() || null);
+    return s.value || null;
+  };
 
   const TABS_BY_ROLE = {
     doctor:     ['doctor', 'pharmacist', 'schedule', 'lab'],
@@ -693,11 +704,11 @@
         <div class="grid-2">
           <div><label>General condition</label>${examSelect('dq-ex-general', EXAM.general)}</div>
           <div><label>Chest</label>${examSelect('dq-ex-chest', EXAM.chest)}</div>
-          <div><label>Abdomen</label>${examSelect('dq-ex-abdomen', EXAM.abdomen)}</div>
+          <div><label>Abdomen</label>${selectCustom('dq-ex-abdomen', EXAM.abdomen)}</div>
           <div><label>CVS</label>${examSelect('dq-ex-cvs', EXAM.cvs)}</div>
         </div>
-        <div style="margin-top:14px;"><label>Provisional Diagnosis</label><input id="dq-diagnosis" placeholder="e.g. Viral fever"></div>
-        <div style="margin-top:12px;"><label>Lab Investigation</label><textarea id="dq-lab" placeholder="Tests to order (CBC, CRP, X-ray…)"></textarea></div>
+        <div style="margin-top:14px;"><label>Provisional Diagnosis</label>${selectCustom('dq-diagnosis', DIAGNOSES)}</div>
+        <div style="margin-top:12px;"><label>Lab Investigation</label>${selectCustom('dq-lab', LABS)}</div>
       </div>
 
       <div class="card">
@@ -715,6 +726,14 @@
         <button class="primary" id="save-rx-btn">💾 Save Prescription &amp; mark seen</button>
         <button class="danger" id="noshow-btn" style="padding:11px 18px;">Mark No-show</button>
       </div>`;
+
+    // Wire "CUSTOM…" dropdowns to reveal their text box.
+    detail.querySelectorAll('select.has-custom').forEach(sel => {
+      const ci = document.getElementById(sel.id + '-custom');
+      const sync = () => { ci.style.display = sel.value === '__custom__' ? '' : 'none'; };
+      sel.addEventListener('change', () => { sync(); if (sel.value === '__custom__') ci.focus(); });
+      sync();
+    });
 
     $('med-rows').appendChild(makeMedRow());
     $('add-med-btn').addEventListener('click', () => $('med-rows').appendChild(makeMedRow()));
@@ -767,7 +786,7 @@
     const examination = {
       general: $('dq-ex-general').value || null,
       chest:   $('dq-ex-chest').value || null,
-      abdomen: $('dq-ex-abdomen').value || null,
+      abdomen: readSelectCustom('dq-ex-abdomen'),
       cvs:     $('dq-ex-cvs').value || null,
     };
     $('save-rx-btn').disabled = true;
@@ -780,8 +799,8 @@
       p_residence: $('dq-residence').value.trim() || null,
       p_complaint: $('dq-complaint').value.trim() || null,
       p_examination: examination,
-      p_diagnosis: $('dq-diagnosis').value.trim() || null,
-      p_lab: $('dq-lab').value.trim() || null,
+      p_diagnosis: readSelectCustom('dq-diagnosis'),
+      p_lab: readSelectCustom('dq-lab'),
     });
     $('save-rx-btn').disabled = false;
     if (error) { toast('Save failed: ' + error.message, '#ef4444'); return; }
