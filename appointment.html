@@ -43,6 +43,10 @@
       <label for="f-age">Patient age (years)</label>
       <input id="f-age" type="number" inputmode="numeric" min="0" max="120" placeholder="e.g. 5" />
     </div>
+    <div class="appt-field">
+      <label for="f-residence">Residence (village / town)</label>
+      <input id="f-residence" type="text" autocomplete="address-level2" placeholder="e.g. Beehama" />
+    </div>
 
     <p class="appt-err hidden" id="form-error"></p>
 
@@ -162,6 +166,6 @@
 <script>window.SUPABASE_ANON_ONLY = true;</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js?v=2"></script>
-<script src="appointment.js?v=13"></script>
+<script src="appointment.js?v=14"></script>
 </body>
 </html>
