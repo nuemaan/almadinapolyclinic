@@ -646,26 +646,27 @@
   function makeMedRow(med = {}) {
     const div = document.createElement('div');
     div.className = 'med-row';
+    const typePreset = MED_TYPES.includes(med.type) ? med.type : (med.type ? 'Custom' : '');
+    const typeCustom = typePreset === 'Custom';
     const instPreset = INSTRUCTIONS.includes(med.instructions) ? med.instructions : (med.instructions ? 'Custom' : '');
     const isCustom = instPreset === 'Custom';
     div.innerHTML = `
-      <div class="mf"><label>Type</label><select class="m-type"><option value="">—</option>${optionsHtml(MED_TYPES, med.type)}</select></div>
+      <div class="mf"><label>Type</label><select class="m-type"><option value="">—</option>${optionsHtml(MED_TYPES, typePreset)}<option ${typeCustom?'selected':''}>Custom</option></select></div>
+      <div class="mf m-type-cust-wrap" style="${typeCustom?'':'display:none'}"><label>Custom type</label><input class="m-type-custom" placeholder="Type" value="${typeCustom?escapeHtml(med.type||''):''}"></div>
       <div class="mf mf-name"><label>Medicine</label><input class="m-name" placeholder="e.g. Paracetamol" value="${escapeHtml(med.name||'')}"></div>
       <div class="mf mf-sm"><label>Dosage</label><input class="m-dosage" placeholder="5" value="${escapeHtml(med.dosage||'')}"></div>
       <div class="mf mf-sm"><label>Unit</label><select class="m-unit"><option value="">—</option>${optionsHtml(DOSE_UNITS, med.unit)}</select></div>
       <div class="mf"><label>Frequency</label><input class="m-freq" placeholder="Twice daily" value="${escapeHtml(med.frequency||'')}"></div>
-      <div class="mf mf-sm"><label>Duration</label><input class="m-dur" placeholder="5 days" value="${escapeHtml(med.duration||'')}"></div>
-      <div class="mf mf-sm"><label>Qty</label><input class="m-qty" type="number" min="0" placeholder="10" value="${escapeHtml(med.quantity||'')}"></div>
       <div class="mf"><label>Instructions</label><select class="m-inst"><option value="">—</option>${optionsHtml(INSTRUCTIONS, instPreset)}<option ${isCustom?'selected':''}>Custom</option></select></div>
       <div class="mf m-cust-wrap" style="${isCustom?'':'display:none'}"><label>Custom instruction</label><input class="m-inst-custom" placeholder="Type instruction" value="${isCustom?escapeHtml(med.instructions||''):''}"></div>
       <div class="mf mf-rm"><button class="danger" type="button">✕</button></div>`;
     div.querySelector('button.danger').addEventListener('click', () => div.remove());
-    const inst = div.querySelector('.m-inst'), wrap = div.querySelector('.m-cust-wrap'), cust = div.querySelector('.m-inst-custom');
-    inst.addEventListener('change', () => {
-      const show = inst.value === 'Custom';
-      wrap.style.display = show ? '' : 'none';
-      if (show) cust.focus();
-    });
+    const toggle = (sel, wrapSel, custSel) => {
+      const s = div.querySelector(sel), w = div.querySelector(wrapSel), c = div.querySelector(custSel);
+      s.addEventListener('change', () => { const show = s.value === 'Custom'; w.style.display = show ? '' : 'none'; if (show) c.focus(); });
+    };
+    toggle('.m-type', '.m-type-cust-wrap', '.m-type-custom');
+    toggle('.m-inst', '.m-cust-wrap', '.m-inst-custom');
     return div;
   }
 
@@ -768,16 +769,16 @@
 
   async function saveConsult(v) {
     const meds = Array.from(document.querySelectorAll('#med-rows .med-row')).map(r => {
+      const typeSel = r.querySelector('.m-type').value;
+      const type = typeSel === 'Custom' ? r.querySelector('.m-type-custom').value.trim() : typeSel;
       const instSel = r.querySelector('.m-inst').value;
       const instructions = instSel === 'Custom' ? r.querySelector('.m-inst-custom').value.trim() : instSel;
       return {
         name: r.querySelector('.m-name').value.trim(),
-        type: r.querySelector('.m-type').value,
+        type,
         dosage: r.querySelector('.m-dosage').value.trim(),
         unit: r.querySelector('.m-unit').value,
         frequency: r.querySelector('.m-freq').value.trim(),
-        duration: r.querySelector('.m-dur').value.trim(),
-        quantity: r.querySelector('.m-qty').value.trim(),
         instructions,
       };
     }).filter(m => m.name);
