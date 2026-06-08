@@ -1081,6 +1081,19 @@
   });
   document.addEventListener('click', (e) => { if (e.target.id === 'lab-upload-btn') uploadLab(); });
 
+  // Enter in the consultation form jumps to the next field (Shift+Enter = newline in textareas).
+  $('dq-detail').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const t = e.target;
+    if (!t.matches || !t.matches('input, select, textarea')) return;
+    if (t.tagName === 'TEXTAREA' && e.shiftKey) return;
+    e.preventDefault();
+    const fields = Array.from($('dq-detail').querySelectorAll('input, select, textarea'))
+      .filter(el => !el.disabled && el.offsetParent !== null);
+    const i = fields.indexOf(t);
+    if (i > -1 && i < fields.length - 1) fields[i + 1].focus();
+  });
+
   /* init */
   boot();
 </script>
