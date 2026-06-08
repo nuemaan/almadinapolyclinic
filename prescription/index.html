@@ -894,7 +894,7 @@
             <div class="rx-inv">Investigations${rx.lab_advice ? `<div class="rx-inv-list">${escapeHtml(rx.lab_advice).replace(/\n/g, '<br>')}</div>` : ''}</div>
             <div class="rx-content">
               ${rx.complaint ? `<div class="rx-line2"><b>Complaint:</b> ${escapeHtml(rx.complaint)}</div>` : ''}
-              ${examLines.length ? `<div class="rx-line2"><b>On Examination (O/E):</b></div>${examLines.map(([k, v]) => `<div class="rx-exline">${escapeHtml(k)}: ${escapeHtml(v)}</div>`).join('')}` : ''}
+              ${examLines.length ? `<div class="rx-line2" style="margin-top:10px;"><b>On Examination (O/E):</b></div>${examLines.map(([k, v]) => `<div class="rx-exline">${escapeHtml(k)}: ${escapeHtml(v)}</div>`).join('')}` : ''}
               ${rx.diagnosis ? `<div class="rx-line2" style="margin-top:6px;"><b>Provisional Diagnosis:</b> ${escapeHtml(rx.diagnosis)}</div>` : ''}
               <div class="rx-symbol">℞</div>
               ${meds.length === 0 ? '' : `<ol class="rx-meds">${meds.map(medLine).join('')}</ol>`}
