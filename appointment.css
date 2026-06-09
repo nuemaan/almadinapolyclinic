@@ -345,7 +345,7 @@ a { color: inherit; text-decoration: none; }
   display: block; font-weight: 800; font-size: 13px;
   color: var(--muted); margin-bottom: 6px; letter-spacing: .02em;
 }
-.appt-field input {
+.appt-field input, .appt-field select {
   width: 100%; padding: 14px 16px;
   border: 2px solid rgba(27,23,64,.1); border-radius: 16px;
   font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 700;
@@ -353,7 +353,7 @@ a { color: inherit; text-decoration: none; }
   transition: border-color .2s, box-shadow .2s;
 }
 .appt-field input::placeholder { color: #b3b0c4; font-weight: 600; }
-.appt-field input:focus {
+.appt-field input:focus, .appt-field select:focus {
   outline: none; border-color: var(--pink);
   box-shadow: 0 0 0 4px rgba(255,124,181,.14);
 }

@@ -615,30 +615,41 @@
     $('dq-session').textContent = `${formatDate(currentSession.session_date)} · ${currentSession.session.toUpperCase()}`;
     const { data, error } = await sb
       .from('visits')
-      .select('id,token_number,source,status,patients(id,name,phone,age,gender,residence)')
+      .select('id,token_number,source,status,patients(id,name,phone,age,age_unit,gender,residence)')
       .eq('session_date', currentSession.session_date)
       .eq('session', currentSession.session)
-      .in('status', ['waiting', 'attending'])
+      .in('status', ['waiting', 'attending', 'noshow', 'done'])
       .order('token_number', { ascending: true });
     const list = $('dq-list');
     if (error) { list.innerHTML = `<div class="empty">Error: ${escapeHtml(error.message)}</div>`; return; }
     if (!data.length) { list.innerHTML = '<div class="empty">No patients waiting.</div>'; return; }
-    list.innerHTML = data.map(v => `
-      <div class="rx-item ${v.id === selectedVisitId ? 'selected' : ''}" data-id="${v.id}">
+    // Seen patients sink to the bottom; waiting / serving / no-show keep token order.
+    const sorted = [...data].sort((a, b) =>
+      ((a.status === 'done') - (b.status === 'done')) || (a.token_number - b.token_number));
+    list.innerHTML = sorted.map(v => {
+      const isNo = v.status === 'noshow', isDone = v.status === 'done';
+      const pill = v.status === 'attending' ? '<span class="pill attending">serving</span>'
+        : isDone ? '<span class="pill" style="background:#dcfce7;color:#15803d;">✓ seen</span>'
+        : isNo   ? '<span class="pill" style="background:#fee2e2;color:#b91c1c;">no-show</span>'
+        : `<span class="pill ${v.source}">${v.source}</span>`;
+      const rowStyle = isNo ? 'background:#fff1f2;border-color:#fecaca;' : (isDone ? 'opacity:.66;' : '');
+      return `
+      <div class="rx-item ${v.id === selectedVisitId ? 'selected' : ''}" data-id="${v.id}" style="${rowStyle}">
         <div class="tok">#${v.token_number}</div>
         <div style="flex:1;min-width:0;">
           <div class="name">${escapeHtml(v.patients?.name || '—')}</div>
           <div class="meta">📞 ${escapeHtml(v.patients?.phone || '—')}</div>
         </div>
-        <span class="pill ${v.status === 'attending' ? 'attending' : v.source}">${v.status === 'attending' ? 'serving' : v.source}</span>
-      </div>`).join('');
-    list.querySelectorAll('.rx-item').forEach(it => it.addEventListener('click', () => selectVisit(it.dataset.id, data)));
+        ${pill}
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.rx-item').forEach(it => it.addEventListener('click', () => selectVisit(it.dataset.id, sorted)));
   }
 
   async function selectVisit(id, data) {
     selectedVisitId = id;
     const v = (data || []).find(x => x.id === id);
-    await sb.rpc('set_attending', { p_visit_id: id });
+    if (v && v.status === 'waiting') await sb.rpc('set_attending', { p_visit_id: id });
     loadQueue();
     renderConsult(v);
   }
@@ -648,8 +659,6 @@
     div.className = 'med-row';
     const typePreset = MED_TYPES.includes(med.type) ? med.type : (med.type ? 'Custom' : '');
     const typeCustom = typePreset === 'Custom';
-    const instPreset = INSTRUCTIONS.includes(med.instructions) ? med.instructions : (med.instructions ? 'Custom' : '');
-    const isCustom = instPreset === 'Custom';
     div.innerHTML = `
       <div class="mf"><label>Type</label><select class="m-type"><option value="">—</option>${optionsHtml(MED_TYPES, typePreset)}<option ${typeCustom?'selected':''}>Custom</option></select></div>
       <div class="mf m-type-cust-wrap" style="${typeCustom?'':'display:none'}"><label>Custom type</label><input class="m-type-custom" placeholder="Type" value="${typeCustom?escapeHtml(med.type||''):''}"></div>
@@ -657,30 +666,41 @@
       <div class="mf mf-sm"><label>Dosage</label><input class="m-dosage" placeholder="5" value="${escapeHtml(med.dosage||'')}"></div>
       <div class="mf mf-sm"><label>Unit</label><select class="m-unit"><option value="">—</option>${optionsHtml(DOSE_UNITS, med.unit)}</select></div>
       <div class="mf"><label>Frequency</label><input class="m-freq" placeholder="Twice daily" value="${escapeHtml(med.frequency||'')}"></div>
-      <div class="mf"><label>Instructions</label><select class="m-inst"><option value="">—</option>${optionsHtml(INSTRUCTIONS, instPreset)}<option ${isCustom?'selected':''}>Custom</option></select></div>
-      <div class="mf m-cust-wrap" style="${isCustom?'':'display:none'}"><label>Custom instruction</label><input class="m-inst-custom" placeholder="Type instruction" value="${isCustom?escapeHtml(med.instructions||''):''}"></div>
       <div class="mf mf-rm"><button class="danger" type="button">✕</button></div>`;
     div.querySelector('button.danger').addEventListener('click', () => div.remove());
-    const toggle = (sel, wrapSel, custSel) => {
-      const s = div.querySelector(sel), w = div.querySelector(wrapSel), c = div.querySelector(custSel);
-      s.addEventListener('change', () => { const show = s.value === 'Custom'; w.style.display = show ? '' : 'none'; if (show) c.focus(); });
-    };
-    toggle('.m-type', '.m-type-cust-wrap', '.m-type-custom');
-    toggle('.m-inst', '.m-cust-wrap', '.m-inst-custom');
+    const ts = div.querySelector('.m-type'), tw = div.querySelector('.m-type-cust-wrap'), tc = div.querySelector('.m-type-custom');
+    ts.addEventListener('change', () => { const show = ts.value === 'Custom'; tw.style.display = show ? '' : 'none'; if (show) tc.focus(); });
     return div;
   }
 
   async function renderConsult(v) {
     const p = v.patients || {};
     const detail = $('dq-detail');
-    const defaultDoc = DOCTORS.includes(staffProfile.name) ? staffProfile.name : DOCTORS[0];
+    // Load any prescription already saved for this visit so the doctor can edit it.
+    let rx = null;
+    try {
+      const { data: ex } = await sb.rpc('prescription_for_visit', { p_visit_id: v.id });
+      rx = Array.isArray(ex) ? ex[0] : ex;
+    } catch {}
+    const isEdit = !!(rx && rx.id);
+    const exam0 = (rx && rx.examination) || {};
+    const defaultDoc = (rx && rx.doctor_name) || (DOCTORS.includes(staffProfile.name) ? staffProfile.name : DOCTORS[0]);
     detail.innerHTML = `
       <div class="card">
         <h2>Consultation — Token #${v.token_number}</h2>
         <div class="grid">
           <div><label>Patient</label><input value="${escapeHtml(p.name||'')}" disabled></div>
           <div><label>Phone</label><input value="${escapeHtml(p.phone||'')}" disabled></div>
-          <div><label>Age</label><input id="dq-age" type="number" min="0" value="${p.age ?? ''}" placeholder="Years"></div>
+          <div><label>Age</label>
+            <div style="display:flex; gap:6px;">
+              <input id="dq-age" type="number" min="0" value="${p.age ?? ''}" placeholder="Age" style="flex:1; min-width:0;">
+              <select id="dq-age-unit" style="flex:0 0 96px;">
+                <option value="years"  ${(p.age_unit||'years')==='years'?'selected':''}>Years</option>
+                <option value="months" ${p.age_unit==='months'?'selected':''}>Months</option>
+                <option value="days"   ${p.age_unit==='days'?'selected':''}>Days</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div class="grid-2" style="margin-top:12px;">
           <div><label>Gender</label>
@@ -701,6 +721,7 @@
       <div class="card">
         <h2>History &amp; Examination</h2>
         <div><label>Complaint</label><textarea id="dq-complaint" placeholder="Presenting complaint…"></textarea></div>
+        <div style="margin-top:12px; max-width:240px;"><label>Temperature (°F)</label><input id="dq-temp" type="number" step="0.1" inputmode="decimal" min="80" max="115" placeholder="e.g. 100.4"></div>
         <div style="margin-top:14px; margin-bottom:8px; font-weight:800; font-size:12px; color:var(--teal-dark); text-transform:uppercase; letter-spacing:.04em;">Clinical Examination</div>
         <div class="grid-2">
           <div><label>General condition</label>${examSelect('dq-ex-general', EXAM.general)}</div>
@@ -724,7 +745,7 @@
       </div>
 
       <div class="actions">
-        <button class="primary" id="save-rx-btn">💾 Save Prescription &amp; mark seen</button>
+        <button class="primary" id="save-rx-btn">${isEdit ? '💾 Update Prescription' : '💾 Save Prescription &amp; mark seen'}</button>
         <button class="danger" id="noshow-btn" style="padding:11px 18px;">Mark No-show</button>
       </div>`;
 
@@ -736,7 +757,28 @@
       sync();
     });
 
-    $('med-rows').appendChild(makeMedRow());
+    // Prefill from an existing prescription (edit mode).
+    if (isEdit) {
+      if (rx.complaint) $('dq-complaint').value = rx.complaint;
+      if (rx.temperature) $('dq-temp').value = rx.temperature;
+      const setSel = (id, val) => { const s = $(id); if (s && val) s.value = val; };
+      setSel('dq-ex-general', exam0.general);
+      setSel('dq-ex-chest', exam0.chest);
+      const setSC = (id, val) => {
+        const s = $(id); if (!s || val == null || val === '') return;
+        const opt = Array.from(s.options).find(o => o.value === val);
+        if (opt) { s.value = val; }
+        else { s.value = '__custom__'; const ci = $(id + '-custom'); if (ci) { ci.value = val; ci.style.display = ''; } }
+      };
+      setSC('dq-ex-abdomen', exam0.abdomen);
+      setSC('dq-diagnosis', rx.diagnosis);
+      setSC('dq-lab', rx.lab_advice);
+    }
+    if (isEdit && Array.isArray(rx.medicines) && rx.medicines.length) {
+      rx.medicines.forEach(m => $('med-rows').appendChild(makeMedRow(m)));
+    } else {
+      $('med-rows').appendChild(makeMedRow());
+    }
     $('add-med-btn').addEventListener('click', () => $('med-rows').appendChild(makeMedRow()));
     $('save-rx-btn').addEventListener('click', () => saveConsult(v));
     $('noshow-btn').addEventListener('click', async () => {
@@ -763,7 +805,7 @@
       <details class="hist-item">
         <summary>${formatDate(rx.created_at)} · ${escapeHtml(rx.doctor_name||'')} · ${rx.medicines.length} medicine${rx.medicines.length===1?'':'s'}</summary>
         ${sub(rx) ? `<div class="hist-note" style="margin-top:8px;">${escapeHtml(sub(rx))}</div>` : ''}
-        <div class="h-meds">${rx.medicines.map(m => `• <strong>${escapeHtml(m.name)}</strong>${m.type?' ('+escapeHtml(m.type)+')':''} ${escapeHtml([m.dosage,m.unit].filter(Boolean).join(' '))} — ${escapeHtml(m.frequency||'')}, ${escapeHtml(m.duration||'')} ${m.instructions?('('+escapeHtml(m.instructions)+')'):''}`).join('<br>')}</div>
+        <div class="h-meds">${rx.medicines.map(m => `• <strong>${escapeHtml(m.name)}</strong>${m.type?' ('+escapeHtml(m.type)+')':''} ${escapeHtml([m.dosage,m.unit].filter(Boolean).join(' '))}${m.frequency?(' — '+escapeHtml(m.frequency)):''}`).join('<br>')}</div>
       </details>`).join('');
   }
 
@@ -771,15 +813,12 @@
     const meds = Array.from(document.querySelectorAll('#med-rows .med-row')).map(r => {
       const typeSel = r.querySelector('.m-type').value;
       const type = typeSel === 'Custom' ? r.querySelector('.m-type-custom').value.trim() : typeSel;
-      const instSel = r.querySelector('.m-inst').value;
-      const instructions = instSel === 'Custom' ? r.querySelector('.m-inst-custom').value.trim() : instSel;
       return {
         name: r.querySelector('.m-name').value.trim(),
         type,
         dosage: r.querySelector('.m-dosage').value.trim(),
         unit: r.querySelector('.m-unit').value,
         frequency: r.querySelector('.m-freq').value.trim(),
-        instructions,
       };
     }).filter(m => m.name);
     if (meds.length === 0 && !confirm('No medicines added. Save prescription anyway and mark the patient as seen?')) return;
@@ -796,8 +835,10 @@
       p_doctor_name: ($('dq-doctor') && $('dq-doctor').value) || staffProfile.name,
       p_medicines: meds,
       p_age: $('dq-age').value ? parseInt($('dq-age').value, 10) : null,
+      p_age_unit: ($('dq-age-unit') && $('dq-age-unit').value) || null,
       p_gender: $('dq-gender').value || null,
       p_complaint: $('dq-complaint').value.trim() || null,
+      p_temperature: $('dq-temp') && $('dq-temp').value.trim() ? $('dq-temp').value.trim() : null,
       p_examination: examination,
       p_diagnosis: readSelectCustom('dq-diagnosis'),
       p_lab: readSelectCustom('dq-lab'),
@@ -813,19 +854,30 @@
   /* ====================== PHARMACIST: prescriptions from DB ====================== */
   let selectedRx = null;
   async function loadPrescriptions() {
-    const { data, error } = await sb.from('prescriptions')
-      .select('id,created_at,doctor_name,notes,medicines,complaint,examination,diagnosis,lab_advice,patients(name,phone,age,gender,residence),visits(token_number)')
-      .order('created_at', { ascending: false }).limit(100);
     const list = $('rx-list'), detail = $('rx-detail');
+    const { data: raw, error } = await sb.rpc('recent_prescriptions');
     if (error) { list.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
-    if (!data.length) { list.innerHTML = '<div class="empty">No prescriptions yet</div>'; detail.innerHTML = '<div class="card"><div class="empty">Saved prescriptions appear here</div></div>'; return; }
-    list.innerHTML = data.map(rx => `
+    const data = (raw || []).map(r => ({
+      id: r.id, created_at: r.created_at, doctor_name: r.doctor_name, notes: r.notes,
+      medicines: r.medicines || [], complaint: r.complaint, examination: r.examination || {},
+      diagnosis: r.diagnosis, lab_advice: r.lab_advice, temperature: r.temperature, is_followup: r.is_followup,
+      patients: { name: r.patient_name, phone: r.phone, age: r.age, age_unit: r.age_unit, gender: r.gender, residence: r.residence },
+      visits: { token_number: r.token_number },
+    }));
+    if (!data.length) { list.innerHTML = '<div class="empty">No prescriptions in the last 3 days</div>'; detail.innerHTML = '<div class="card"><div class="empty">Saved prescriptions appear here</div></div>'; return; }
+    list.innerHTML = data.map(rx => {
+      const tag = rx.is_followup
+        ? '<span class="pill" style="background:#e0e7ff;color:#4338ca;">Follow-up</span>'
+        : '<span class="pill" style="background:#dcfce7;color:#15803d;">New</span>';
+      return `
       <div class="rx-item ${rx.id===selectedRx?'selected':''}" data-id="${rx.id}">
         <div style="flex:1;min-width:0;">
           <div class="name">${escapeHtml(rx.patients?.name||'—')}</div>
           <div class="meta">${formatDate(rx.created_at)} • ${rx.medicines.length} medicine${rx.medicines.length===1?'':'s'}</div>
         </div>
-      </div>`).join('');
+        ${tag}
+      </div>`;
+    }).join('');
     list.querySelectorAll('.rx-item').forEach(it => it.addEventListener('click', () => { selectedRx = it.dataset.id; loadPrescriptions(); renderRxDetail(data.find(r=>r.id===it.dataset.id)); }));
     if (!selectedRx || !data.find(r => r.id === selectedRx)) selectedRx = data[0].id;
     renderRxDetail(data.find(r => r.id === selectedRx));
@@ -835,7 +887,9 @@
     const el = $('rx-detail');
     if (!rx) { el.innerHTML = '<div class="card"><div class="empty">Select a prescription</div></div>'; return; }
     const p = rx.patients || {};
-    const ageGender = [p.age ? p.age + 'y' : '', p.gender || ''].filter(Boolean).join(' / ') || '—';
+    const ageStr = (p.age != null && p.age !== '')
+      ? p.age + (p.age_unit === 'months' ? ' mo' : p.age_unit === 'days' ? ' d' : 'y') : '';
+    const ageGender = [ageStr, p.gender || ''].filter(Boolean).join(' / ') || '—';
     const meds = rx.medicines || [];
     const exam = rx.examination || {};
     const examLines = [
@@ -846,9 +900,8 @@
     ].filter(Boolean);
     const medLine = (m) => {
       const dose = [m.dosage, m.unit].filter(Boolean).join(' ');
-      const head = m.name + (m.type ? ' (' + m.type + ')' : '') + (dose ? ' — ' + dose : '');
-      const det = [m.frequency, m.duration, m.quantity ? 'Qty ' + m.quantity : '', m.instructions].filter(Boolean).join('  ·  ');
-      return `<li><span class="m-nm">${escapeHtml(head)}</span>${det ? `<span class="m-dt">${escapeHtml(det)}</span>` : ''}</li>`;
+      const head = m.name + (m.type ? ' (' + m.type + ')' : '') + (dose ? ' — ' + dose : '') + (m.frequency ? ' · ' + m.frequency : '');
+      return `<li><span class="m-nm">${escapeHtml(head)}</span></li>`;
     };
     const qr = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=' + encodeURIComponent(CLINIC.apptUrl);
     el.innerHTML = `
@@ -894,7 +947,8 @@
             <div class="rx-inv">Investigations${rx.lab_advice ? `<div class="rx-inv-list">${escapeHtml(rx.lab_advice).replace(/\n/g, '<br>')}</div>` : ''}</div>
             <div class="rx-content">
               ${rx.complaint ? `<div class="rx-line2"><b>Complaint:</b> ${escapeHtml(rx.complaint)}</div>` : ''}
-              ${examLines.length ? `<div class="rx-line2" style="margin-top:10px;"><b>On Examination (O/E):</b></div>${examLines.map(([k, v]) => `<div class="rx-exline">${escapeHtml(k)}: ${escapeHtml(v)}</div>`).join('')}` : ''}
+              ${rx.temperature ? `<div class="rx-line2" style="margin-top:4px;"><b>Temperature:</b> ${escapeHtml(rx.temperature)} °F</div>` : ''}
+              ${examLines.length ? `<div class="rx-line2" style="margin-top:18px;"><b>On Examination (O/E):</b></div>${examLines.map(([k, v]) => `<div class="rx-exline">${escapeHtml(k)}: ${escapeHtml(v)}</div>`).join('')}` : ''}
               ${rx.diagnosis ? `<div class="rx-line2" style="margin-top:6px;"><b>Provisional Diagnosis:</b> ${escapeHtml(rx.diagnosis)}</div>` : ''}
               <div class="rx-symbol">℞</div>
               ${meds.length === 0 ? '' : `<ol class="rx-meds">${meds.map(medLine).join('')}</ol>`}
@@ -917,8 +971,8 @@
   function csvCell(v) { const s = (v == null ? '' : String(v)); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
   function exportCsv(rx) {
     if (!rx.medicines.length) { toast('No medicines to export', '#ef4444'); return; }
-    const headers = ['prescription_id','date','patient_name','phone','medicine_name','dosage','frequency','duration','quantity','instructions'];
-    const rows = rx.medicines.map(m => [rx.id, formatDate(rx.created_at), rx.patients?.name, rx.patients?.phone, m.name, m.dosage, m.frequency, m.duration, m.quantity, m.instructions]);
+    const headers = ['prescription_id','date','patient_name','phone','medicine_name','type','dosage','unit','frequency'];
+    const rows = rx.medicines.map(m => [rx.id, formatDate(rx.created_at), rx.patients?.name, rx.patients?.phone, m.name, m.type, m.dosage, m.unit, m.frequency]);
     const csv = [headers, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `prescription-${rx.id}.csv`;
@@ -957,8 +1011,16 @@
     if (expired.length) pruneExpired(expired);
     const fresh = data.filter(t => new Date(t.expires_at).getTime() > now);
     if (!fresh.length) { list.innerHTML = '<div class="empty">No tests uploaded yet.</div>'; return; }
-    list.innerHTML = `<table><thead><tr><th>Code</th><th>Patient</th><th>Test</th><th>Uploaded</th><th>Expires</th><th>Files</th><th></th></tr></thead><tbody>${fresh.map(t => `<tr ${t.code===highlightCode?'style="background:var(--coral-soft);"':''}><td><span style="font-family:monospace; font-weight:800; font-size:15px; letter-spacing:1.5px; color:var(--teal-dark);">${t.code}</span></td><td>${escapeHtml(t.patient_name)}</td><td>${escapeHtml(t.test_name)}</td><td>${formatDateTime(t.uploaded_at)}</td><td>${expiryLabel(t.expires_at)}</td><td>${t.files.length}</td><td><button class="danger" data-code="${t.code}">Delete</button></td></tr>`).join('')}</tbody></table>`;
+    list.innerHTML = `<table><thead><tr><th>Code</th><th>Patient</th><th>Test</th><th>Uploaded</th><th>Expires</th><th>Files</th><th></th></tr></thead><tbody>${fresh.map(t => `<tr ${t.code===highlightCode?'style="background:var(--coral-soft);"':''}><td><span style="font-family:monospace; font-weight:800; font-size:15px; letter-spacing:1.5px; color:var(--teal-dark);">${t.code}</span></td><td><button type="button" class="lab-name" data-code="${t.code}" style="background:none;border:none;padding:0;color:var(--teal-dark);font-weight:700;text-decoration:underline;cursor:pointer;font-size:inherit;font-family:inherit;">${escapeHtml(t.patient_name)}</button></td><td>${escapeHtml(t.test_name)}</td><td>${formatDateTime(t.uploaded_at)}</td><td>${expiryLabel(t.expires_at)}</td><td>${t.files.length}</td><td><button class="danger" data-code="${t.code}">Delete</button></td></tr>
+      <tr class="lab-files-row" data-code="${t.code}" style="display:none;"><td colspan="7" style="background:var(--teal-bg);">
+        <div style="font-weight:700; margin-bottom:6px;">📋 ${escapeHtml(t.test_name)} — ${t.files.length} file${t.files.length===1?'':'s'} uploaded</div>
+        ${(t.files||[]).map(f => `<a href="${f.url}" target="_blank" rel="noopener" style="display:inline-flex; gap:6px; align-items:center; margin:3px 10px 3px 0; padding:6px 11px; background:#fff; border:1px solid var(--teal-soft); border-radius:8px; text-decoration:none; color:var(--teal-dark); font-size:13px;">📄 ${escapeHtml(f.name)}</a>`).join('')}
+      </td></tr>`).join('')}</tbody></table>`;
     list.querySelectorAll('button.danger').forEach(btn => btn.addEventListener('click', () => deleteLab(btn.dataset.code)));
+    list.querySelectorAll('.lab-name').forEach(btn => btn.addEventListener('click', () => {
+      const row = list.querySelector('.lab-files-row[data-code="' + btn.dataset.code + '"]');
+      if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+    }));
   }
   async function deleteLab(code) {
     if (!confirm('Delete this test upload? The patient will no longer be able to download.')) return;
@@ -1092,7 +1154,15 @@
     const fields = Array.from($('dq-detail').querySelectorAll('input, select, textarea'))
       .filter(el => !el.disabled && el.offsetParent !== null);
     const i = fields.indexOf(t);
-    if (i > -1 && i < fields.length - 1) fields[i + 1].focus();
+    if (i > -1 && i < fields.length - 1) { fields[i + 1].focus(); return; }
+    // On the last field of the medicines list, Enter adds a fresh medicine row.
+    if (i === fields.length - 1 && t.closest && t.closest('#med-rows')) {
+      const btn = $('add-med-btn'); if (btn) btn.click();
+      const rows = document.querySelectorAll('#med-rows .med-row');
+      const last = rows[rows.length - 1];
+      const first = last && last.querySelector('select, input, textarea');
+      if (first) first.focus();
+    }
   });
 
   /* init */

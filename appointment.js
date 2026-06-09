@@ -197,7 +197,7 @@ function friendlyError(err) {
   return null;
 }
 
-async function bookOne(name, phone, loc, age, residence) {
+async function bookOne(name, phone, loc, age, residence, ageUnit) {
   const { data, error } = await sb.rpc('book_appointment', {
     p_name: name, p_phone: phone,
     p_source: isWalkin ? 'walkin' : 'home',
@@ -205,6 +205,7 @@ async function bookOne(name, phone, loc, age, residence) {
     p_lat: loc ? loc.lat : null,
     p_lng: loc ? loc.lng : null,
     p_age: age != null && age !== '' ? parseInt(age, 10) : null,
+    p_age_unit: ageUnit || 'years',
     p_residence: residence || null,
   });
   if (error) throw error;
@@ -224,6 +225,7 @@ function showForm({ adding = false } = {}) {
   $('form-error').classList.add('hidden');
   $('f-name').value = '';
   $('f-age').value = '';
+  if ($('f-age-unit')) $('f-age-unit').value = 'years';
   $('f-residence').value = '';
   if (adding && saved && saved.phone) $('f-phone').value = saved.phone;
   // hide the "today/hours" meta — routing decides the slot now
@@ -236,11 +238,13 @@ async function submitForm() {
   const name = $('f-name').value.trim();
   const phone = $('f-phone').value.trim();
   const age = $('f-age').value.trim();
+  const ageUnit = ($('f-age-unit') && $('f-age-unit').value) || 'years';
   const residence = $('f-residence').value.trim();
+  const ageMax = ageUnit === 'years' ? 120 : ageUnit === 'months' ? 36 : 60;
   const errEl = $('form-error'); errEl.classList.add('hidden');
   if (!name) { errEl.textContent = 'Please enter the patient name.'; errEl.classList.remove('hidden'); return; }
   if (phone.replace(/\D/g, '').length !== 10) { errEl.textContent = 'Please enter a 10-digit mobile number.'; errEl.classList.remove('hidden'); return; }
-  if (age === '' || isNaN(+age) || +age < 0 || +age > 120) { errEl.textContent = 'Please enter the patient age.'; errEl.classList.remove('hidden'); return; }
+  if (age === '' || isNaN(+age) || +age < 0 || +age > ageMax) { errEl.textContent = 'Please enter a valid patient age.'; errEl.classList.remove('hidden'); return; }
   if (!residence) { errEl.textContent = 'Please enter the residence (village / town).'; errEl.classList.remove('hidden'); return; }
 
   $('book-btn').disabled = true;
@@ -248,7 +252,7 @@ async function submitForm() {
   $('loading-text').textContent = isWalkin ? 'Reserving your spot…' : '📍 Checking your location & finding a slot…';
   try {
     const loc = isWalkin ? null : await getLocation();
-    const res = await bookOne(name, phone, loc, age, residence);
+    const res = await bookOne(name, phone, loc, age, residence, ageUnit);
     const saved = pruneSaved();
     const patients = (addingMore && saved ? saved.patients : []).concat([
       { token: res.token_number, name, source: res.source, session_date: res.session_date, session: res.session, headline: res.headline, message: res.message },
