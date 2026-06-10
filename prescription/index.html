@@ -728,6 +728,7 @@
           <div><label>Chest</label>${examSelect('dq-ex-chest', EXAM.chest)}</div>
           <div><label>Abdomen</label>${selectCustom('dq-ex-abdomen', EXAM.abdomen)}</div>
           <div><label>CVS</label>${examSelect('dq-ex-cvs', EXAM.cvs)}</div>
+          <div><label>Other</label><input id="dq-ex-other" placeholder="Any other finding"></div>
         </div>
         <div style="margin-top:14px;"><label>Provisional Diagnosis</label>${selectCustom('dq-diagnosis', DIAGNOSES)}</div>
         <div style="margin-top:12px;"><label>Lab Investigation</label>${selectCustom('dq-lab', LABS)}</div>
@@ -764,6 +765,7 @@
       const setSel = (id, val) => { const s = $(id); if (s && val) s.value = val; };
       setSel('dq-ex-general', exam0.general);
       setSel('dq-ex-chest', exam0.chest);
+      if (exam0.other && $('dq-ex-other')) $('dq-ex-other').value = exam0.other;
       const setSC = (id, val) => {
         const s = $(id); if (!s || val == null || val === '') return;
         const opt = Array.from(s.options).find(o => o.value === val);
@@ -828,6 +830,7 @@
       chest:   $('dq-ex-chest').value || null,
       abdomen: readSelectCustom('dq-ex-abdomen'),
       cvs:     $('dq-ex-cvs').value || null,
+      other:   ($('dq-ex-other') && $('dq-ex-other').value.trim()) || null,
     };
     $('save-rx-btn').disabled = true;
     const { error } = await sb.rpc('save_prescription', {
@@ -897,6 +900,7 @@
       exam.chest   ? ['Chest', exam.chest] : null,
       exam.abdomen ? ['Abdomen', exam.abdomen] : null,
       exam.cvs     ? ['CVS', exam.cvs] : null,
+      exam.other   ? ['Other', exam.other] : null,
     ].filter(Boolean);
     const medLine = (m) => {
       const dose = [m.dosage, m.unit].filter(Boolean).join(' ');
