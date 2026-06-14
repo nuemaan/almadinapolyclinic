@@ -411,7 +411,7 @@
         <div id="lab-staged" style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;"></div>
       </div>
       <div class="actions"><button class="primary" id="lab-upload-btn">Upload &amp; Generate Code</button></div>
-      <div style="margin-top: 10px; font-size: 12px; color: var(--muted);">Test files expire and are auto-deleted 3 days after upload.</div>
+      <div style="margin-top: 10px; font-size: 12px; color: var(--muted);">Test files expire and are auto-deleted 14 days after upload.</div>
     </div>
     <div class="card"><h2>Recent Uploads</h2><div id="lab-list"></div></div>
     <input id="lab-add-files" type="file" multiple style="display: none;" />
@@ -428,7 +428,7 @@
   const sb = window.supabaseClient;
   const $ = (id) => document.getElementById(id);
   const LAB_KEY = 'labTests';
-  const EXPIRY_MS = 3 * 24 * 60 * 60 * 1000;
+  const EXPIRY_MS = 14 * 24 * 60 * 60 * 1000;
 
   const CLINIC = {
     name: 'Al Madina Polyclinic & Laboratory',
