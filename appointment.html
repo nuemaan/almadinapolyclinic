@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="appointment.css?v=6" />
+<link rel="stylesheet" href="appointment.css?v=7" />
 </head>
 <body>
 
@@ -40,14 +40,11 @@
       <input id="f-phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="10-digit mobile number" />
     </div>
     <div class="appt-field">
-      <label for="f-age">Patient age</label>
-      <div style="display:flex; gap:10px;">
-        <input id="f-age" type="number" inputmode="numeric" min="0" placeholder="e.g. 5" style="flex:1; min-width:0;" />
-        <select id="f-age-unit" style="flex:0 0 40%;">
-          <option value="years">Years</option>
-          <option value="months">Months</option>
-          <option value="days">Days</option>
-        </select>
+      <label for="f-age-y">Patient age</label>
+      <div style="display:flex; gap:8px;">
+        <input id="f-age-y" type="number" inputmode="numeric" min="0" placeholder="Years"  style="flex:1; min-width:0;" />
+        <input id="f-age-m" type="number" inputmode="numeric" min="0" placeholder="Months" style="flex:1; min-width:0;" />
+        <input id="f-age-d" type="number" inputmode="numeric" min="0" placeholder="Days"   style="flex:1; min-width:0;" />
       </div>
     </div>
     <div class="appt-field">
@@ -173,6 +170,6 @@
 <script>window.SUPABASE_ANON_ONLY = true;</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js?v=2"></script>
-<script src="appointment.js?v=15"></script>
+<script src="appointment.js?v=16"></script>
 </body>
 </html>

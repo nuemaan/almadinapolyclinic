@@ -615,7 +615,7 @@
     $('dq-session').textContent = `${formatDate(currentSession.session_date)} · ${currentSession.session.toUpperCase()}`;
     const { data, error } = await sb
       .from('visits')
-      .select('id,token_number,source,status,patients(id,name,phone,age,age_unit,gender,residence)')
+      .select('id,token_number,source,status,patients(id,name,phone,age_years,age_months,age_days,gender,residence)')
       .eq('session_date', currentSession.session_date)
       .eq('session', currentSession.session)
       .in('status', ['waiting', 'attending', 'noshow', 'done'])
@@ -683,6 +683,16 @@
       rx = Array.isArray(ex) ? ex[0] : ex;
     } catch {}
     const isEdit = !!(rx && rx.id);
+    // Latest prescription for this patient (any visit, last 14 days) — follow-ups attach here.
+    let lastRx = null;
+    if (p.id) {
+      const { data: lr } = await sb.from('prescriptions')
+        .select('id,created_at,followups,diagnosis,medicines')
+        .eq('patient_id', p.id)
+        .gte('created_at', new Date(Date.now() - 14 * 86400000).toISOString())
+        .order('created_at', { ascending: false }).limit(1);
+      lastRx = lr && lr[0];
+    }
     const exam0 = (rx && rx.examination) || {};
     const defaultDoc = (rx && rx.doctor_name) || (DOCTORS.includes(staffProfile.name) ? staffProfile.name : DOCTORS[0]);
     detail.innerHTML = `
@@ -693,14 +703,13 @@
           <div><label>Phone</label><input value="${escapeHtml(p.phone||'')}" disabled></div>
           <div><label>Age</label>
             <div style="display:flex; gap:6px;">
-              <input id="dq-age" type="number" min="0" value="${p.age ?? ''}" placeholder="Age" style="flex:1; min-width:0;">
-              <select id="dq-age-unit" style="flex:0 0 96px;">
-                <option value="years"  ${(p.age_unit||'years')==='years'?'selected':''}>Years</option>
-                <option value="months" ${p.age_unit==='months'?'selected':''}>Months</option>
-                <option value="days"   ${p.age_unit==='days'?'selected':''}>Days</option>
-              </select>
+              <input id="dq-age-y" type="number" min="0" value="${p.age_years ?? ''}"  placeholder="Y" style="width:33%; min-width:0;">
+              <input id="dq-age-m" type="number" min="0" value="${p.age_months ?? ''}" placeholder="M" style="width:33%; min-width:0;">
+              <input id="dq-age-d" type="number" min="0" value="${p.age_days ?? ''}"   placeholder="D" style="width:33%; min-width:0;">
             </div>
+            <div style="font-size:11px; color:var(--muted); margin-top:3px;">Years · Months · Days</div>
           </div>
+          <div><label>Weight (kg)</label><input id="dq-weight" type="number" step="0.1" min="0" placeholder="e.g. 12" value="${isEdit && rx.weight ? escapeHtml(rx.weight) : ''}"></div>
         </div>
         <div class="grid-2" style="margin-top:12px;">
           <div><label>Gender</label>
@@ -738,6 +747,15 @@
         <h2>Previous Visits</h2>
         <div class="hist" id="dq-history"><div class="empty">Loading history…</div></div>
       </div>
+
+      ${lastRx ? `
+      <div class="card" id="followup-card">
+        <h2>Follow-up <span style="font-weight:600; font-size:12px; color:var(--muted);">(returning patient)</span></h2>
+        <p style="font-size:12.5px; color:var(--muted); margin:-4px 0 10px;">Add a note for a returning patient — it prints at the bottom of their last prescription. No new prescription is created.</p>
+        <div id="fu-existing"></div>
+        <textarea id="dq-followup" placeholder="e.g. Day 3 — improving, continue same medicines"></textarea>
+        <div class="actions"><button class="primary" id="save-fu-btn">💬 Save Follow-up (no new Rx)</button></div>
+      </div>` : ''}
 
       <div class="card">
         <h2>Medicines</h2>
@@ -783,6 +801,17 @@
     }
     $('add-med-btn').addEventListener('click', () => $('med-rows').appendChild(makeMedRow()));
     $('save-rx-btn').addEventListener('click', () => saveConsult(v));
+    // Follow-up card (returning patient) — appends a dated note to the last prescription.
+    if (lastRx) {
+      const fe = $('fu-existing');
+      const fus = Array.isArray(lastRx.followups) ? lastRx.followups : [];
+      if (fe) fe.innerHTML = fus.length
+        ? '<div style="font-size:12px; color:var(--muted); margin-bottom:6px;">Already on the last prescription:</div>' +
+          fus.map(f => `<div style="font-size:13px; padding:4px 0; border-bottom:1px dashed #eee;"><b>${escapeHtml(f.date||'')}</b> — ${escapeHtml(f.note||'')}</div>`).join('')
+        : '';
+      const fb = $('save-fu-btn');
+      if (fb) fb.addEventListener('click', () => saveFollowup(v));
+    }
     $('noshow-btn').addEventListener('click', async () => {
       if (!confirm('Mark this patient as no-show?')) return;
       await sb.rpc('set_status', { p_visit_id: v.id, p_status: 'noshow' });
@@ -837,11 +866,13 @@
       p_visit_id: v.id,
       p_doctor_name: ($('dq-doctor') && $('dq-doctor').value) || staffProfile.name,
       p_medicines: meds,
-      p_age: $('dq-age').value ? parseInt($('dq-age').value, 10) : null,
-      p_age_unit: ($('dq-age-unit') && $('dq-age-unit').value) || null,
+      p_age_years:  $('dq-age-y') && $('dq-age-y').value !== '' ? parseInt($('dq-age-y').value, 10) : null,
+      p_age_months: $('dq-age-m') && $('dq-age-m').value !== '' ? parseInt($('dq-age-m').value, 10) : null,
+      p_age_days:   $('dq-age-d') && $('dq-age-d').value !== '' ? parseInt($('dq-age-d').value, 10) : null,
       p_gender: $('dq-gender').value || null,
       p_complaint: $('dq-complaint').value.trim() || null,
       p_temperature: $('dq-temp') && $('dq-temp').value.trim() ? $('dq-temp').value.trim() : null,
+      p_weight: $('dq-weight') && $('dq-weight').value.trim() ? $('dq-weight').value.trim() : null,
       p_examination: examination,
       p_diagnosis: readSelectCustom('dq-diagnosis'),
       p_lab: readSelectCustom('dq-lab'),
@@ -854,6 +885,22 @@
     toast('Prescription saved · patient marked seen');
   }
 
+  async function saveFollowup(v) {
+    const note = ($('dq-followup') && $('dq-followup').value.trim()) || '';
+    if (!note) { toast('Type a follow-up note first', '#ef4444'); return; }
+    const btn = $('save-fu-btn'); if (btn) btn.disabled = true;
+    const { error } = await sb.rpc('add_followup', {
+      p_visit_id: v.id, p_note: note,
+      p_doctor: ($('dq-doctor') && $('dq-doctor').value) || staffProfile.name,
+    });
+    if (btn) btn.disabled = false;
+    if (error) { toast('Failed: ' + (error.message || error), '#ef4444'); return; }
+    selectedVisitId = null;
+    $('dq-detail').innerHTML = '<div class="card"><div class="empty">Follow-up added ✔ — it prints on the last prescription. Select the next patient.</div></div>';
+    loadQueue();
+    toast('Follow-up added to last prescription');
+  }
+
   /* ====================== PHARMACIST: prescriptions from DB ====================== */
   let selectedRx = null;
   async function loadPrescriptions() {
@@ -863,8 +910,9 @@
     const data = (raw || []).map(r => ({
       id: r.id, created_at: r.created_at, doctor_name: r.doctor_name, notes: r.notes,
       medicines: r.medicines || [], complaint: r.complaint, examination: r.examination || {},
-      diagnosis: r.diagnosis, lab_advice: r.lab_advice, temperature: r.temperature, is_followup: r.is_followup,
-      patients: { name: r.patient_name, phone: r.phone, age: r.age, age_unit: r.age_unit, gender: r.gender, residence: r.residence },
+      diagnosis: r.diagnosis, lab_advice: r.lab_advice, temperature: r.temperature,
+      weight: r.weight, followups: r.followups || [], is_followup: r.is_followup,
+      patients: { name: r.patient_name, phone: r.phone, age_years: r.age_years, age_months: r.age_months, age_days: r.age_days, gender: r.gender, residence: r.residence },
       visits: { token_number: r.token_number },
     }));
     if (!data.length) { list.innerHTML = '<div class="empty">No prescriptions in the last 3 days</div>'; detail.innerHTML = '<div class="card"><div class="empty">Saved prescriptions appear here</div></div>'; return; }
@@ -890,10 +938,14 @@
     const el = $('rx-detail');
     if (!rx) { el.innerHTML = '<div class="card"><div class="empty">Select a prescription</div></div>'; return; }
     const p = rx.patients || {};
-    const ageStr = (p.age != null && p.age !== '')
-      ? p.age + (p.age_unit === 'months' ? ' mo' : p.age_unit === 'days' ? ' d' : 'y') : '';
+    const ageBits = [];
+    if (p.age_years)  ageBits.push(p.age_years  + ' year'  + (p.age_years  == 1 ? '' : 's'));
+    if (p.age_months) ageBits.push(p.age_months + ' month' + (p.age_months == 1 ? '' : 's'));
+    if (p.age_days)   ageBits.push(p.age_days   + ' day'   + (p.age_days   == 1 ? '' : 's'));
+    const ageStr = ageBits.join(' ');
     const ageGender = [ageStr, p.gender || ''].filter(Boolean).join(' / ') || '—';
     const meds = rx.medicines || [];
+    const followups = rx.followups || [];
     const exam = rx.examination || {};
     const examLines = [
       exam.general ? ['General condition', exam.general] : null,
@@ -943,7 +995,7 @@
           <div class="rx-patient">
             <span><b>Patient's Name:</b> ${escapeHtml(p.name || '')}</span>
             <span><b>Age:</b> ${escapeHtml(ageGender)}</span>
-            <span><b>Weight:</b> </span>
+            <span><b>Weight:</b> ${escapeHtml(rx.weight ? rx.weight + ' kg' : '')}</span>
             <span><b>R/o:</b> ${escapeHtml(p.residence || '')}</span>
           </div>
           <div class="rx-rule"></div>
@@ -956,6 +1008,7 @@
               ${rx.diagnosis ? `<div class="rx-line2" style="margin-top:6px;"><b>Provisional Diagnosis:</b> ${escapeHtml(rx.diagnosis)}</div>` : ''}
               <div class="rx-symbol">℞</div>
               ${meds.length === 0 ? '' : `<ol class="rx-meds">${meds.map(medLine).join('')}</ol>`}
+              ${followups.length ? `<div class="rx-line2" style="margin-top:14px;"><b>Follow-up:</b></div>${followups.map(f => `<div class="rx-exline">${escapeHtml(f.date || '')}${f.date ? ' — ' : ''}${escapeHtml(f.note || '')}</div>`).join('')}` : ''}
             </div>
           </div>
           <div class="rx-foot">

@@ -167,24 +167,27 @@ function turnTime(s) {
 function sessionStarted(s) { return !s.session_open || new Date(s.session_open) <= new Date(s.server_now || Date.now()); }
 function hhmm(d) { return d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }); }
 
-// compact per-number badge shown in the "when" rows
+// compact per-number badge shown in the "when" rows (no clock-time estimates)
 function shortTurn(s) {
   const st = s.your_status;
   if (st === 'done') return '✅ seen';
-  if (st === 'attending') return '🔔 your turn now';
+  if (st === 'attending') return '🔔 now serving you';
   if (st === 'cancelled' || st === 'noshow') return 'check reception';
-  if ((s.ahead ?? 0) === 0 && sessionStarted(s)) return "⏳ you're next";
-  return '⏳ ~' + hhmm(turnTime(s));
+  const ahead = s.ahead ?? 0;
+  if (ahead === 0 && sessionStarted(s)) return "⏳ you're next";
+  if (ahead === 0) return '⏳ starting soon';
+  return '⏳ ' + ahead + ' ahead';
 }
 
-function paintEta(s, prefix = '') {
+function paintEta(s) {
   const lbl = $('ts-eta-label'), el = $('ts-eta'), st = s.your_status;
+  el.classList.remove('serving-you');
   if (st === 'done') { lbl.textContent = '✅ Status'; el.textContent = 'Seen — thank you!'; }
-  else if (st === 'attending') { lbl.textContent = '🔔 Status'; el.textContent = "It's your turn now!"; }
+  else if (st === 'attending') { lbl.textContent = '🔔 Your turn'; el.textContent = 'Now serving you!'; el.classList.add('serving-you'); }
   else if (st === 'cancelled' || st === 'noshow') { lbl.textContent = 'ℹ️ Status'; el.textContent = 'Please check at reception'; }
-  else if ((s.ahead ?? 0) === 0 && sessionStarted(s)) { lbl.textContent = `⏳ ${prefix}Your turn (approx.)`; el.textContent = "You're next!"; }
-  else if ((s.ahead ?? 0) === 0) { lbl.textContent = `⏳ ${prefix}Your turn (approx.)`; el.textContent = hhmm(turnTime(s)); }
-  else { lbl.textContent = `⏳ ${prefix}${s.ahead} ahead · turn approx.`; el.textContent = hhmm(turnTime(s)); }
+  else if ((s.ahead ?? 0) === 0 && sessionStarted(s)) { lbl.textContent = '⏳ Your position'; el.textContent = "You're next!"; }
+  else if ((s.ahead ?? 0) === 0) { lbl.textContent = '⏳ Your position'; el.textContent = 'Starting soon'; }
+  else { lbl.textContent = '⏳ Ahead of you'; el.textContent = s.ahead + (s.ahead === 1 ? ' patient' : ' patients'); }
 }
 
 // ---- networking ----
@@ -197,15 +200,14 @@ function friendlyError(err) {
   return null;
 }
 
-async function bookOne(name, phone, loc, age, residence, ageUnit) {
+async function bookOne(name, phone, loc, age, residence) {
   const { data, error } = await sb.rpc('book_appointment', {
     p_name: name, p_phone: phone,
     p_source: isWalkin ? 'walkin' : 'home',
     p_qr_token: qrToken,
     p_lat: loc ? loc.lat : null,
     p_lng: loc ? loc.lng : null,
-    p_age: age != null && age !== '' ? parseInt(age, 10) : null,
-    p_age_unit: ageUnit || 'years',
+    p_age_years: age.y, p_age_months: age.m, p_age_days: age.d,
     p_residence: residence || null,
   });
   if (error) throw error;
@@ -224,8 +226,7 @@ function showForm({ adding = false } = {}) {
     : "📍 We'll ask for your location to give you a slot you can reach in time. Your name &amp; number are shared only with the clinic.";
   $('form-error').classList.add('hidden');
   $('f-name').value = '';
-  $('f-age').value = '';
-  if ($('f-age-unit')) $('f-age-unit').value = 'years';
+  ['f-age-y', 'f-age-m', 'f-age-d'].forEach(id => { if ($(id)) $(id).value = ''; });
   $('f-residence').value = '';
   if (adding && saved && saved.phone) $('f-phone').value = saved.phone;
   // hide the "today/hours" meta — routing decides the slot now
@@ -237,14 +238,13 @@ function showForm({ adding = false } = {}) {
 async function submitForm() {
   const name = $('f-name').value.trim();
   const phone = $('f-phone').value.trim();
-  const age = $('f-age').value.trim();
-  const ageUnit = ($('f-age-unit') && $('f-age-unit').value) || 'years';
+  const num = (id) => { const s = ($(id).value || '').trim(); return s === '' ? null : (isNaN(+s) ? null : Math.max(0, parseInt(s, 10))); };
+  const ageY = num('f-age-y'), ageM = num('f-age-m'), ageD = num('f-age-d');
   const residence = $('f-residence').value.trim();
-  const ageMax = ageUnit === 'years' ? 120 : ageUnit === 'months' ? 36 : 60;
   const errEl = $('form-error'); errEl.classList.add('hidden');
   if (!name) { errEl.textContent = 'Please enter the patient name.'; errEl.classList.remove('hidden'); return; }
   if (phone.replace(/\D/g, '').length !== 10) { errEl.textContent = 'Please enter a 10-digit mobile number.'; errEl.classList.remove('hidden'); return; }
-  if (age === '' || isNaN(+age) || +age < 0 || +age > ageMax) { errEl.textContent = 'Please enter a valid patient age.'; errEl.classList.remove('hidden'); return; }
+  if ((ageY || 0) + (ageM || 0) + (ageD || 0) <= 0) { errEl.textContent = 'Please enter the patient age (years, months, or days).'; errEl.classList.remove('hidden'); return; }
   if (!residence) { errEl.textContent = 'Please enter the residence (village / town).'; errEl.classList.remove('hidden'); return; }
 
   $('book-btn').disabled = true;
@@ -252,7 +252,7 @@ async function submitForm() {
   $('loading-text').textContent = isWalkin ? 'Reserving your spot…' : '📍 Checking your location & finding a slot…';
   try {
     const loc = isWalkin ? null : await getLocation();
-    const res = await bookOne(name, phone, loc, age, residence, ageUnit);
+    const res = await bookOne(name, phone, loc, { y: ageY, m: ageM, d: ageD }, residence);
     const saved = pruneSaved();
     const patients = (addingMore && saved ? saved.patients : []).concat([
       { token: res.token_number, name, source: res.source, session_date: res.session_date, session: res.session, headline: res.headline, message: res.message },
