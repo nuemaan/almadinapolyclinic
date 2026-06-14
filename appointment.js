@@ -167,27 +167,25 @@ function turnTime(s) {
 function sessionStarted(s) { return !s.session_open || new Date(s.session_open) <= new Date(s.server_now || Date.now()); }
 function hhmm(d) { return d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }); }
 
-// compact per-number badge shown in the "when" rows (no clock-time estimates)
+// compact per-number badge shown in the "when" rows
 function shortTurn(s) {
   const st = s.your_status;
   if (st === 'done') return '✅ seen';
-  if (st === 'attending') return '🔔 now serving you';
+  if (st === 'attending') return '🔔 now serving you';   // being served → no time estimate
   if (st === 'cancelled' || st === 'noshow') return 'check reception';
-  const ahead = s.ahead ?? 0;
-  if (ahead === 0 && sessionStarted(s)) return "⏳ you're next";
-  if (ahead === 0) return '⏳ starting soon';
-  return '⏳ ' + ahead + ' ahead';
+  if ((s.ahead ?? 0) === 0 && sessionStarted(s)) return "⏳ you're next";
+  return '⏳ ~' + hhmm(turnTime(s));
 }
 
 function paintEta(s) {
   const lbl = $('ts-eta-label'), el = $('ts-eta'), st = s.your_status;
   el.classList.remove('serving-you');
   if (st === 'done') { lbl.textContent = '✅ Status'; el.textContent = 'Seen — thank you!'; }
-  else if (st === 'attending') { lbl.textContent = '🔔 Your turn'; el.textContent = 'Now serving you!'; el.classList.add('serving-you'); }
+  else if (st === 'attending') { lbl.textContent = '🔔 Your turn'; el.textContent = 'Now serving you!'; el.classList.add('serving-you'); }  // no time while being served
   else if (st === 'cancelled' || st === 'noshow') { lbl.textContent = 'ℹ️ Status'; el.textContent = 'Please check at reception'; }
-  else if ((s.ahead ?? 0) === 0 && sessionStarted(s)) { lbl.textContent = '⏳ Your position'; el.textContent = "You're next!"; }
-  else if ((s.ahead ?? 0) === 0) { lbl.textContent = '⏳ Your position'; el.textContent = 'Starting soon'; }
-  else { lbl.textContent = '⏳ Ahead of you'; el.textContent = s.ahead + (s.ahead === 1 ? ' patient' : ' patients'); }
+  else if ((s.ahead ?? 0) === 0 && sessionStarted(s)) { lbl.textContent = '⏳ Your turn (approx.)'; el.textContent = "You're next!"; }
+  else if ((s.ahead ?? 0) === 0) { lbl.textContent = '⏳ Your turn (approx.)'; el.textContent = hhmm(turnTime(s)); }
+  else { lbl.textContent = `⏳ ${s.ahead} ahead · turn approx.`; el.textContent = hhmm(turnTime(s)); }
 }
 
 // ---- networking ----
