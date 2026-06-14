@@ -414,6 +414,7 @@
       <div style="margin-top: 10px; font-size: 12px; color: var(--muted);">Test files expire and are auto-deleted 3 days after upload.</div>
     </div>
     <div class="card"><h2>Recent Uploads</h2><div id="lab-list"></div></div>
+    <input id="lab-add-files" type="file" multiple style="display: none;" />
   </section>
 
 </main>
@@ -1065,6 +1066,7 @@
   const LAB_BUCKET = 'lab-reports';
   const EXPIRY_SEC = Math.floor(EXPIRY_MS / 1000);
   let stagedFiles = [];
+  let labAddTarget = null;   // code of the upload we're appending files to
 
   function renderStaged() {
     const el = $('lab-staged');
@@ -1092,16 +1094,61 @@
     if (expired.length) pruneExpired(expired);
     const fresh = data.filter(t => new Date(t.expires_at).getTime() > now);
     if (!fresh.length) { list.innerHTML = '<div class="empty">No tests uploaded yet.</div>'; return; }
-    list.innerHTML = `<table><thead><tr><th>Code</th><th>Patient</th><th>Test</th><th>Uploaded</th><th>Expires</th><th>Files</th><th></th></tr></thead><tbody>${fresh.map(t => `<tr ${t.code===highlightCode?'style="background:var(--coral-soft);"':''}><td><span style="font-family:monospace; font-weight:800; font-size:15px; letter-spacing:1.5px; color:var(--teal-dark);">${t.code}</span></td><td><button type="button" class="lab-name" data-code="${t.code}" style="background:none;border:none;padding:0;color:var(--teal-dark);font-weight:700;text-decoration:underline;cursor:pointer;font-size:inherit;font-family:inherit;">${escapeHtml(t.patient_name)}</button></td><td>${escapeHtml(t.test_name)}</td><td>${formatDateTime(t.uploaded_at)}</td><td>${expiryLabel(t.expires_at)}</td><td>${t.files.length}</td><td><button class="danger" data-code="${t.code}">Delete</button></td></tr>
+    list.innerHTML = `<table><thead><tr><th>Code</th><th>Patient</th><th>Test</th><th>Uploaded</th><th>Expires</th><th>Files</th><th></th></tr></thead><tbody>${fresh.map(t => `<tr ${t.code===highlightCode?'style="background:var(--coral-soft);"':''}><td><span style="font-family:monospace; font-weight:800; font-size:15px; letter-spacing:1.5px; color:var(--teal-dark);">${t.code}</span></td><td><button type="button" class="lab-name" data-code="${t.code}" style="background:none;border:none;padding:0;color:var(--teal-dark);font-weight:700;text-decoration:underline;cursor:pointer;font-size:inherit;font-family:inherit;">${escapeHtml(t.patient_name)}</button></td><td>${escapeHtml(t.test_name)}</td><td>${formatDateTime(t.uploaded_at)}</td><td>${expiryLabel(t.expires_at)}</td><td>${t.files.length}</td><td style="white-space:nowrap;"><button class="secondary" data-add="${t.code}" style="padding:6px 10px; margin-right:4px;">+ Files</button><button class="secondary" data-edit="${t.code}" style="padding:6px 10px; margin-right:4px;">Edit</button><button class="danger" data-code="${t.code}">Delete</button></td></tr>
       <tr class="lab-files-row" data-code="${t.code}" style="display:none;"><td colspan="7" style="background:var(--teal-bg);">
         <div style="font-weight:700; margin-bottom:6px;">📋 ${escapeHtml(t.test_name)} — ${t.files.length} file${t.files.length===1?'':'s'} uploaded</div>
         ${(t.files||[]).map(f => `<a href="${f.url}" target="_blank" rel="noopener" style="display:inline-flex; gap:6px; align-items:center; margin:3px 10px 3px 0; padding:6px 11px; background:#fff; border:1px solid var(--teal-soft); border-radius:8px; text-decoration:none; color:var(--teal-dark); font-size:13px;">📄 ${escapeHtml(f.name)}</a>`).join('')}
       </td></tr>`).join('')}</tbody></table>`;
     list.querySelectorAll('button.danger').forEach(btn => btn.addEventListener('click', () => deleteLab(btn.dataset.code)));
+    list.querySelectorAll('button[data-add]').forEach(btn => btn.addEventListener('click', () => { labAddTarget = btn.dataset.add; $('lab-add-files').click(); }));
+    list.querySelectorAll('button[data-edit]').forEach(btn => btn.addEventListener('click', () => editLab(btn.dataset.edit)));
     list.querySelectorAll('.lab-name').forEach(btn => btn.addEventListener('click', () => {
       const row = list.querySelector('.lab-files-row[data-code="' + btn.dataset.code + '"]');
       if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
     }));
+  }
+  // Append more files to an existing upload (same code). Re-signs every file and
+  // refreshes the 3-day window so all reports stay downloadable together.
+  async function addLabFiles(code, fileList) {
+    if (!fileList || !fileList.length) return;
+    toast('Uploading…');
+    try {
+      const { data: row, error } = await sb.from('lab_tests').select('files').eq('code', code).single();
+      if (error) throw error;
+      const existing = row.files || [];
+      const prefix = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      const added = [];
+      for (const f of fileList) {
+        const safe = f.name.replace(/[^\w.\-]+/g, '_');
+        const path = `${prefix}/${safe}`;
+        const up = await sb.storage.from(LAB_BUCKET).upload(path, f, { contentType: f.type || 'application/octet-stream', upsert: false });
+        if (up.error) throw up.error;
+        added.push({ name: f.name, size: f.size, type: f.type, path });
+      }
+      const all = existing.concat(added);
+      const expires_at = new Date(Date.now() + EXPIRY_MS).toISOString();
+      for (const f of all) {
+        const signed = await sb.storage.from(LAB_BUCKET).createSignedUrl(f.path, EXPIRY_SEC, { download: f.name });
+        if (!signed.error) f.url = signed.data.signedUrl;
+      }
+      const { error: upErr } = await sb.from('lab_tests').update({ files: all, expires_at }).eq('code', code);
+      if (upErr) throw upErr;
+      toast('Added ' + added.length + ' file(s) · code ' + code); renderLab(code);
+    } catch (e) { console.error(e); toast('Add failed: ' + (e.message || e), '#ef4444'); }
+  }
+  // Rename the patient / test on an existing upload.
+  async function editLab(code) {
+    const { data } = await sb.from('lab_tests').select('patient_name,test_name').eq('code', code).single();
+    if (!data) return;
+    const patient_name = prompt('Patient name:', data.patient_name);
+    if (patient_name === null) return;
+    const test_name = prompt('Test name:', data.test_name);
+    if (test_name === null) return;
+    const { error } = await sb.from('lab_tests')
+      .update({ patient_name: patient_name.trim() || data.patient_name, test_name: test_name.trim() || data.test_name })
+      .eq('code', code);
+    if (error) return toast('Update failed: ' + error.message, '#ef4444');
+    toast('Updated'); renderLab(code);
   }
   async function deleteLab(code) {
     if (!confirm('Delete this test upload? The patient will no longer be able to download.')) return;
@@ -1224,6 +1271,12 @@
     e.target.value = ''; renderStaged();
   });
   document.addEventListener('click', (e) => { if (e.target.id === 'lab-upload-btn') uploadLab(); });
+  document.addEventListener('change', (e) => {
+    if (e.target.id !== 'lab-add-files') return;
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (labAddTarget && files.length) { const c = labAddTarget; labAddTarget = null; addLabFiles(c, files); }
+  });
 
   // Enter in the consultation form jumps to the next field (Shift+Enter = newline in textareas).
   $('dq-detail').addEventListener('keydown', (e) => {
