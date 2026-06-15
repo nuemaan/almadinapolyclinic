@@ -1032,7 +1032,7 @@
                 if (f.examination)   rows.push('<b>Examination:</b> ' + escapeHtml(f.examination));
                 if (f.treatment)     rows.push('<b>Treatment:</b> ' + escapeHtml(f.treatment));
                 if (f.investigation) rows.push('<b>Investigation:</b> ' + escapeHtml(f.investigation));
-                return `<div class="rx-exline" style="margin-top:8px;"><b>${escapeHtml(f.date || '')}</b></div>${rows.map(r => `<div class="rx-exline" style="margin-top:5px;">${r}</div>`).join('')}`;
+                return `<div class="rx-exline" style="margin-top:8px;"><span style="color:#2563eb; font-style:italic; font-size:11px;">${escapeHtml(f.date || '')}</span></div>${rows.map(r => `<div class="rx-exline" style="margin-top:5px;">${r}</div>`).join('')}`;
               }).join('')}` : ''}
             </div>
           </div>
