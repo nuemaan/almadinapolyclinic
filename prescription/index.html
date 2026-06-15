@@ -973,7 +973,7 @@
     ].filter(Boolean);
     const medLine = (m) => {
       const dose = [m.dosage, m.unit].filter(Boolean).join(' ');
-      const head = m.name + (m.type ? ' (' + m.type + ')' : '') + (dose ? ' — ' + dose : '') + (m.frequency ? ' · ' + m.frequency : '');
+      const head = (m.type ? m.type + ' ' : '') + m.name + (dose ? ' — ' + dose : '') + (m.frequency ? ' · ' + m.frequency : '');
       return `<li><span class="m-nm">${escapeHtml(head)}</span></li>`;
     };
     const qr = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=' + encodeURIComponent(CLINIC.apptUrl);
