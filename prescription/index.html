@@ -294,6 +294,10 @@
     #print-area, #print-area * { visibility: visible; }
     #print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 12mm; background: #fff; }
     #print-area .no-print { display: none !important; }
+    /* "Print follow-up only": keep the full layout (so positions match the
+       original paper) but hide everything except the follow-up block. */
+    body.fu-only #print-area * { visibility: hidden !important; }
+    body.fu-only #print-area .rx-fu-block, body.fu-only #print-area .rx-fu-block * { visibility: visible !important; }
     /* Fill exactly one A4 page: the Rx area flexes to absorb leftover space
        instead of a fixed min-height that could push onto a second page. */
     .rxsheet { border: none; max-width: none; padding: 0; display: flex; flex-direction: column; min-height: 270mm; }
@@ -980,6 +984,7 @@
     el.innerHTML = `
       <div class="no-print actions" style="margin-bottom:12px;">
         <button class="secondary" id="print-btn">🖨 Print</button>
+        ${followups.length ? '<button class="secondary" id="print-fu-btn" title="Re-feed the original prescription — only the follow-up part prints onto the blank area">🖨 Print follow-up only</button>' : ''}
         <button class="primary" id="csv-btn">Save for ERP (CSV)</button>
       </div>
       <div id="print-area">
@@ -1025,7 +1030,7 @@
               ${rx.diagnosis ? `<div class="rx-line2" style="margin-top:6px;"><b>Provisional Diagnosis:</b> ${escapeHtml(rx.diagnosis)}</div>` : ''}
               <div class="rx-symbol">℞</div>
               ${meds.length === 0 ? '' : `<ol class="rx-meds">${meds.map(medLine).join('')}</ol>`}
-              ${followups.length ? `${followups.map(f => {
+              ${followups.length ? `<div class="rx-fu-block">${followups.map(f => {
                 const rows = [];
                 if (f.note)          rows.push(escapeHtml(f.note));
                 if (f.complaint)     rows.push('<b>Complaint:</b> ' + escapeHtml(f.complaint));
@@ -1033,7 +1038,7 @@
                 if (f.treatment)     rows.push('<b>Treatment:</b> ' + escapeHtml(f.treatment));
                 if (f.investigation) rows.push('<b>Investigation:</b> ' + escapeHtml(f.investigation));
                 return `<div class="rx-line2" style="margin-top:14px;"><span style="color:#2563eb; font-style:italic; font-size:11px;">(${escapeHtml(f.date || '')})</span> <b>Follow-up:</b></div>${rows.map(r => `<div class="rx-exline" style="margin-top:5px;">${r}</div>`).join('')}`;
-              }).join('')}` : ''}
+              }).join('')}</div>` : ''}
             </div>
           </div>
           <div class="rx-foot">
@@ -1047,6 +1052,15 @@
         </div>
       </div>`;
     const pb = $('print-btn'); if (pb) pb.addEventListener('click', () => window.print());
+    const fpb = $('print-fu-btn'); if (fpb) fpb.addEventListener('click', () => {
+      // Print ONLY the follow-up block, at its natural position, so it lands on
+      // the blank area when the original prescription is re-fed into the printer.
+      document.body.classList.add('fu-only');
+      const cleanup = () => document.body.classList.remove('fu-only');
+      window.addEventListener('afterprint', cleanup, { once: true });
+      window.print();
+      setTimeout(cleanup, 1500);
+    });
     const cb = $('csv-btn'); if (cb) cb.addEventListener('click', () => exportCsv(rx));
   }
 
