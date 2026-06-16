@@ -951,7 +951,7 @@
       patients: { name: r.patient_name, phone: r.phone, age_years: r.age_years, age_months: r.age_months, age_days: r.age_days, gender: r.gender, residence: r.residence },
       visits: { token_number: r.token_number },
     }));
-    if (!data.length) { list.innerHTML = '<div class="empty">No prescriptions in the last 3 days</div>'; detail.innerHTML = '<div class="card"><div class="empty">Saved prescriptions appear here</div></div>'; return; }
+    if (!data.length) { list.innerHTML = '<div class="empty">No prescriptions this session yet</div>'; detail.innerHTML = '<div class="card"><div class="empty">Saved prescriptions appear here</div></div>'; return; }
     list.innerHTML = data.map(rx => {
       const tag = rx.is_followup
         ? '<span class="pill" style="background:#e0e7ff;color:#4338ca;">Follow-up</span>'
