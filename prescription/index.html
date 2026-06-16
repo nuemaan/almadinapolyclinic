@@ -305,6 +305,20 @@
     .rx-head, .rx-consult, .rx-foot, .rx-meds li { page-break-inside: avoid; break-inside: avoid; }
     .toast { display: none !important; }
   }
+  #ver-badge {
+    position: fixed; bottom: 8px; left: 10px; z-index: 50;
+    font-size: 10px; color: var(--muted); opacity: .55; user-select: none; pointer-events: none;
+  }
+  #update-banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    background: #0d9488; color: #fff; text-align: center; padding: 11px 14px;
+    font-weight: 700; font-size: 14px; box-shadow: 0 3px 12px rgba(0,0,0,.22);
+  }
+  #update-banner button {
+    margin-left: 12px; background: #fff; color: #0d9488; border: none;
+    padding: 7px 16px; border-radius: 9px; font-weight: 800; cursor: pointer; font-size: 13px;
+  }
+  @media print { #ver-badge, #update-banner { display: none !important; } }
 </style>
 </head>
 <body>
@@ -1328,6 +1342,38 @@
       if (first) first.focus();
     }
   });
+
+  /* ---- update checker: badge with the build time + a "refresh" prompt when a
+     new version is deployed. Uses the page's own etag/last-modified, so there is
+     nothing to bump manually. ---- */
+  (function () {
+    let baseTag = null;
+    const fmt = (lm) => { try { return new Date(lm).toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch { return ''; } };
+    function setBadge(lm) {
+      let el = document.getElementById('ver-badge');
+      if (!el) { el = document.createElement('div'); el.id = 'ver-badge'; document.body.appendChild(el); }
+      el.textContent = 'Build ' + (fmt(lm) || '—');
+    }
+    function showBanner() {
+      if (document.getElementById('update-banner')) return;
+      const b = document.createElement('div');
+      b.id = 'update-banner';
+      b.innerHTML = '🔄 A new version is available — refresh to update. <button id="upd-reload" type="button">Refresh now</button>';
+      document.body.appendChild(b);
+      document.getElementById('upd-reload').addEventListener('click', () => location.reload());
+    }
+    async function probe() {
+      try {
+        const res = await fetch(location.pathname + '?_=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+        const tag = res.headers.get('etag') || res.headers.get('last-modified');
+        const lm = res.headers.get('last-modified');
+        if (baseTag === null) { baseTag = tag; setBadge(lm); return; }
+        if (tag && tag !== baseTag) showBanner();
+      } catch {}
+    }
+    probe();
+    setInterval(probe, 120000);   // check every 2 minutes
+  })();
 
   /* init */
   boot();
