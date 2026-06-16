@@ -842,20 +842,34 @@
   async function loadHistory(v) {
     const pid = v.patients?.id;
     const el = $('dq-history');
-    // Per-child history: previous prescriptions for THIS patient (not siblings
-    // on the same phone). Identity is now (phone + name).
+    // Per-child history: ALL previous prescriptions for THIS patient (not siblings
+    // on the same phone). Identity is (phone + name). Each prescription also shows
+    // its follow-up encounters so the doctor sees every prior visit.
     const { data, error } = await sb.from('prescriptions')
-      .select('created_at,doctor_name,notes,medicines,complaint,diagnosis')
-      .eq('patient_id', pid).order('created_at', { ascending: false }).limit(10);
+      .select('created_at,doctor_name,notes,medicines,complaint,diagnosis,followups')
+      .eq('patient_id', pid).order('created_at', { ascending: false }).limit(100);
     if (error) { el.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
     if (!data.length) { el.innerHTML = '<div class="empty">First visit — no previous prescriptions.</div>'; return; }
     const sub = (rx) => rx.diagnosis || rx.complaint || rx.notes || '';
-    el.innerHTML = data.map(rx => `
+    const fuLine = (f) => {
+      const parts = [];
+      if (f.note)          parts.push(escapeHtml(f.note));
+      if (f.complaint)     parts.push('Complaint: ' + escapeHtml(f.complaint));
+      if (f.examination)   parts.push('Exam: ' + escapeHtml(f.examination));
+      if (f.treatment)     parts.push('Rx: ' + escapeHtml(f.treatment));
+      if (f.investigation) parts.push('Ix: ' + escapeHtml(f.investigation));
+      return `<div style="font-size:13px; margin-top:4px;">↳ <b style="color:#2563eb; font-style:italic;">${escapeHtml(f.date||'')}</b> ${parts.join(' · ')}</div>`;
+    };
+    el.innerHTML = data.map(rx => {
+      const fus = Array.isArray(rx.followups) ? rx.followups : [];
+      return `
       <details class="hist-item">
-        <summary>${formatDate(rx.created_at)} · ${escapeHtml(rx.doctor_name||'')} · ${rx.medicines.length} medicine${rx.medicines.length===1?'':'s'}</summary>
+        <summary>${formatDate(rx.created_at)} · ${escapeHtml(rx.doctor_name||'')} · ${rx.medicines.length} medicine${rx.medicines.length===1?'':'s'}${fus.length ? ' · '+fus.length+' follow-up'+(fus.length===1?'':'s') : ''}</summary>
         ${sub(rx) ? `<div class="hist-note" style="margin-top:8px;">${escapeHtml(sub(rx))}</div>` : ''}
         <div class="h-meds">${rx.medicines.map(m => `• <strong>${escapeHtml(m.name)}</strong>${m.type?' ('+escapeHtml(m.type)+')':''} ${escapeHtml([m.dosage,m.unit].filter(Boolean).join(' '))}${m.frequency?(' — '+escapeHtml(m.frequency)):''}`).join('<br>')}</div>
-      </details>`).join('');
+        ${fus.length ? `<div style="margin-top:8px; border-top:1px dashed #e5e7eb; padding-top:6px;">${fus.map(fuLine).join('')}</div>` : ''}
+      </details>`;
+    }).join('');
   }
 
   async function saveConsult(v) {
