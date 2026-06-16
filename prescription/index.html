@@ -654,7 +654,8 @@
   async function selectVisit(id, data) {
     selectedVisitId = id;
     const v = (data || []).find(x => x.id === id);
-    if (v && v.status === 'waiting') await sb.rpc('set_attending', { p_visit_id: id });
+    // Opening a waiting OR returned no-show patient puts them "now serving".
+    if (v && (v.status === 'waiting' || v.status === 'noshow')) await sb.rpc('set_attending', { p_visit_id: id });
     loadQueue();
     renderConsult(v);
   }
