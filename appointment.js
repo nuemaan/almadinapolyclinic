@@ -195,6 +195,8 @@ function friendlyError(err) {
   if (m.includes('INVALID_SCAN'))  return 'That QR code has expired. Please re-scan the code at the clinic.';
   if (m.includes('NAME_REQUIRED')) return 'Please enter the patient name.';
   if (m.includes('PHONE_INVALID')) return 'Please enter a 10-digit mobile number.';
+  if (m.includes('TOO_MANY'))      return "You've reached the booking limit for this number this session. Please call the clinic if you need more.";
+  if (m.includes('PHONE_BLOCKED')) return 'Online booking is unavailable for this number. Please call the clinic at +91 95965 79443.';
   return null;
 }
 
