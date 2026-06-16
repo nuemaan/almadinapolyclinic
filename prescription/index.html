@@ -958,6 +958,7 @@
         : '<span class="pill" style="background:#dcfce7;color:#15803d;">New</span>';
       return `
       <div class="rx-item ${rx.id===selectedRx?'selected':''}" data-id="${rx.id}">
+        ${rx.visits?.token_number != null ? `<div class="tok">#${rx.visits.token_number}</div>` : ''}
         <div style="flex:1;min-width:0;">
           <div class="name">${escapeHtml(rx.patients?.name||'—')}</div>
           <div class="meta">${formatDate(rx.created_at)} • ${rx.medicines.length} medicine${rx.medicines.length===1?'':'s'}</div>
