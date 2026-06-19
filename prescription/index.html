@@ -719,7 +719,7 @@
       <div class="card">
         <h2>Consultation — Token #${v.token_number}</h2>
         <div class="grid">
-          <div><label>Patient</label><input value="${escapeHtml(p.name||'')}" disabled></div>
+          <div><label>Patient name <span style="font-weight:500; text-transform:none; color:var(--muted);">(editable — fix spelling)</span></label><input id="dq-name" value="${escapeHtml(p.name||'')}" placeholder="Patient full name"></div>
           <div><label>Phone</label><input value="${escapeHtml(p.phone||'')}" disabled></div>
           <div><label>Age</label>
             <div style="display:flex; gap:6px;">
@@ -919,6 +919,7 @@
       p_complaint: $('dq-complaint').value.trim() || null,
       p_temperature: $('dq-temp') && $('dq-temp').value.trim() ? $('dq-temp').value.trim() : null,
       p_weight: $('dq-weight') && $('dq-weight').value.trim() ? $('dq-weight').value.trim() : null,
+      p_name: $('dq-name') && $('dq-name').value.trim() ? $('dq-name').value.trim() : null,
       p_examination: examination,
       p_diagnosis: readSelectCustom('dq-diagnosis'),
       p_lab: readSelectCustom('dq-lab'),
