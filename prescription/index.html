@@ -850,11 +850,22 @@
       selectedVisitId = null; detail.innerHTML = '<div class="card"><div class="empty">Select a patient from the queue.</div></div>';
       loadQueue(); toast('Marked no-show');
     });
-    loadHistory(v);
+    // When the doctor corrects the name to one that already exists on this phone,
+    // show THAT record's previous visits straight away (the merge happens on save).
+    const nameEl = $('dq-name');
+    const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (nameEl) nameEl.addEventListener('change', async () => {
+      const nm = nameEl.value.trim();
+      if (!nm || norm(nm) === norm(p.name)) { loadHistory(p.id, false); return; }
+      try {
+        const { data } = await sb.rpc('patient_by_phone_name', { p_phone: p.phone, p_name: nm });
+        loadHistory(data && data !== p.id ? data : p.id, !!(data && data !== p.id));
+      } catch { loadHistory(p.id, false); }
+    });
+    loadHistory(p.id, false);
   }
 
-  async function loadHistory(v) {
-    const pid = v.patients?.id;
+  async function loadHistory(pid, matched) {
     const el = $('dq-history');
     // Per-child history: ALL previous prescriptions for THIS patient (not siblings
     // on the same phone). Identity is (phone + name). Each prescription also shows
@@ -863,7 +874,8 @@
       .select('created_at,doctor_name,notes,medicines,complaint,diagnosis,followups')
       .eq('patient_id', pid).order('created_at', { ascending: false }).limit(100);
     if (error) { el.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
-    if (!data.length) { el.innerHTML = '<div class="empty">First visit — no previous prescriptions.</div>'; return; }
+    const note = matched ? '<div class="hist-note" style="margin-bottom:8px; color:var(--teal-dark); font-weight:700;">↩ Matched an existing record on this phone — these visits will be merged when you save.</div>' : '';
+    if (!data.length) { el.innerHTML = note || '<div class="empty">First visit — no previous prescriptions.</div>'; return; }
     const sub = (rx) => rx.diagnosis || rx.complaint || rx.notes || '';
     const fuLine = (f) => {
       const parts = [];
@@ -874,7 +886,7 @@
       if (f.investigation) parts.push('Ix: ' + escapeHtml(f.investigation));
       return `<div style="font-size:13px; margin-top:4px;">↳ <b style="color:#2563eb; font-style:italic;">${escapeHtml(f.date||'')}</b> ${parts.join(' · ')}</div>`;
     };
-    el.innerHTML = data.map(rx => {
+    el.innerHTML = note + data.map(rx => {
       const fus = Array.isArray(rx.followups) ? rx.followups : [];
       return `
       <details class="hist-item">
