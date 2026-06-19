@@ -768,8 +768,7 @@
         <div class="hist" id="dq-history"><div class="empty">Loading history…</div></div>
       </div>
 
-      ${lastRx ? `
-      <div class="card" id="followup-card">
+      <div class="card" id="followup-card" style="display:none;">
         <h2>Follow-up <span style="font-weight:600; font-size:12px; color:var(--muted);">(returning patient)</span></h2>
         <p style="font-size:12.5px; color:var(--muted); margin:-4px 0 10px;">Fill today's follow-up — it prints at the bottom of the patient's last prescription. No new prescription is created.</p>
         <div id="fu-existing"></div>
@@ -778,7 +777,7 @@
         <div style="margin-top:10px;"><label>Treatment</label><textarea id="dq-fu-treatment" placeholder="Treatment advised…"></textarea></div>
         <div style="margin-top:10px;"><label>Investigation</label><textarea id="dq-fu-investigation" placeholder="Investigations advised…"></textarea></div>
         <div class="actions"><button class="primary" id="save-fu-btn">💬 Save Follow-up (no new Rx)</button></div>
-      </div>` : ''}
+      </div>
 
       <div class="card">
         <h2>Medicines</h2>
@@ -824,26 +823,41 @@
     }
     $('add-med-btn').addEventListener('click', () => $('med-rows').appendChild(makeMedRow()));
     $('save-rx-btn').addEventListener('click', () => saveConsult(v));
-    // Follow-up card (returning patient) — appends a dated note to the last prescription.
-    if (lastRx) {
+    // Follow-up card (returning patient) — appends a dated note to the last
+    // prescription. Shown when the patient (by record, or by a corrected name
+    // that matches an existing record on this phone) has a Rx in the last 14 days.
+    const fuRows = (f) => {
+      const r = [];
+      if (f.note)          r.push(escapeHtml(f.note));
+      if (f.complaint)     r.push('<b>Complaint:</b> ' + escapeHtml(f.complaint));
+      if (f.examination)   r.push('<b>Examination:</b> ' + escapeHtml(f.examination));
+      if (f.treatment)     r.push('<b>Treatment:</b> ' + escapeHtml(f.treatment));
+      if (f.investigation) r.push('<b>Investigation:</b> ' + escapeHtml(f.investigation));
+      return r;
+    };
+    function revealFollowup(rxRow) {
+      const card = $('followup-card'); if (!card) return;
+      if (!rxRow) { card.style.display = 'none'; return; }
+      card.style.display = '';
       const fe = $('fu-existing');
-      const fus = Array.isArray(lastRx.followups) ? lastRx.followups : [];
-      const fuRows = (f) => {
-        const r = [];
-        if (f.note)          r.push(escapeHtml(f.note));
-        if (f.complaint)     r.push('<b>Complaint:</b> ' + escapeHtml(f.complaint));
-        if (f.examination)   r.push('<b>Examination:</b> ' + escapeHtml(f.examination));
-        if (f.treatment)     r.push('<b>Treatment:</b> ' + escapeHtml(f.treatment));
-        if (f.investigation) r.push('<b>Investigation:</b> ' + escapeHtml(f.investigation));
-        return r;
-      };
+      const fus = Array.isArray(rxRow.followups) ? rxRow.followups : [];
       if (fe) fe.innerHTML = fus.length
         ? '<div style="font-size:12px; color:var(--muted); margin-bottom:6px;">Already on the last prescription:</div>' +
           fus.map(f => `<div style="font-size:13px; padding:6px 0; border-bottom:1px dashed #eee;"><b>${escapeHtml(f.date||'')}</b><br>${fuRows(f).join('<br>')}</div>`).join('')
         : '';
-      const fb = $('save-fu-btn');
-      if (fb) fb.addEventListener('click', () => saveFollowup(v));
     }
+    async function latestRxFor(pid) {
+      const { data } = await sb.from('prescriptions')
+        .select('id,created_at,followups')
+        .eq('patient_id', pid)
+        .gte('created_at', new Date(Date.now() - 14 * 86400000).toISOString())
+        .order('created_at', { ascending: false }).limit(1);
+      return data && data[0];
+    }
+    const fb = $('save-fu-btn');
+    if (fb) fb.addEventListener('click', () => saveFollowup(v));
+    if (lastRx) revealFollowup(lastRx);
+
     $('noshow-btn').addEventListener('click', async () => {
       if (!confirm('Mark this patient as no-show?')) return;
       await sb.rpc('set_status', { p_visit_id: v.id, p_status: 'noshow' });
@@ -851,16 +865,19 @@
       loadQueue(); toast('Marked no-show');
     });
     // When the doctor corrects the name to one that already exists on this phone,
-    // show THAT record's previous visits straight away (the merge happens on save).
+    // show THAT record's previous visits AND its follow-up card straight away
+    // (the merge happens on save).
     const nameEl = $('dq-name');
     const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
     if (nameEl) nameEl.addEventListener('change', async () => {
       const nm = nameEl.value.trim();
-      if (!nm || norm(nm) === norm(p.name)) { loadHistory(p.id, false); return; }
+      if (!nm || norm(nm) === norm(p.name)) { loadHistory(p.id, false); revealFollowup(lastRx); return; }
       try {
-        const { data } = await sb.rpc('patient_by_phone_name', { p_phone: p.phone, p_name: nm });
-        loadHistory(data && data !== p.id ? data : p.id, !!(data && data !== p.id));
-      } catch { loadHistory(p.id, false); }
+        const { data: matchId } = await sb.rpc('patient_by_phone_name', { p_phone: p.phone, p_name: nm });
+        const targetId = matchId && matchId !== p.id ? matchId : p.id;
+        loadHistory(targetId, targetId !== p.id);
+        revealFollowup(targetId !== p.id ? await latestRxFor(targetId) : lastRx);
+      } catch { loadHistory(p.id, false); revealFollowup(lastRx); }
     });
     loadHistory(p.id, false);
   }
@@ -955,6 +972,7 @@
       p_complaint: complaint || null, p_examination: exam || null,
       p_treatment: treatment || null, p_investigation: investigation || null,
       p_doctor: ($('dq-doctor') && $('dq-doctor').value) || staffProfile.name,
+      p_name: ($('dq-name') && $('dq-name').value.trim()) || null,
     });
     if (btn) btn.disabled = false;
     if (error) { toast('Failed: ' + (error.message || error), '#ef4444'); return; }
