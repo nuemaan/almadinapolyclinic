@@ -24,6 +24,7 @@ Rules:
 - Dose everything by weight where a weight is given (e.g. "Cefixime 8 mg/kg/day divided BD"). If no weight is given, give the usual mg/kg/dose and say weight is needed to finalise.
 - Prefer drugs and formulations commonly available in India (syrups/drops for young children). Use generic names; a brand in brackets is optional.
 - Always include a short antipyretic/supportive line when there is fever, and clear red-flag/referral advice.
+- Always fill "diet": age-appropriate foods to eat/encourage and foods to avoid, relevant to this diagnosis (locally available Kashmiri/Indian foods where possible).
 - If the information is insufficient to be confident, say so in "advice" and suggest what to check — do not invent findings.
 - Keep it safe: avoid contraindicated combos, flag drug allergies if mentioned, and never recommend anything you are unsure is appropriate for the age.
 - Output ONLY the JSON object that matches the provided schema.`;
@@ -50,9 +51,17 @@ const SCHEMA = {
       },
     },
     advice: { type: 'STRING' },
+    diet: {
+      type: 'OBJECT',
+      properties: {
+        eat: { type: 'ARRAY', items: { type: 'STRING' } },
+        avoid: { type: 'ARRAY', items: { type: 'STRING' } },
+      },
+      required: ['eat', 'avoid'],
+    },
     red_flags: { type: 'ARRAY', items: { type: 'STRING' } },
   },
-  required: ['diagnosis', 'treatment', 'advice'],
+  required: ['diagnosis', 'treatment', 'advice', 'diet'],
 };
 
 async function verifyStaff(token) {

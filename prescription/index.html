@@ -1048,6 +1048,7 @@
         ${medHtml ? `<div style="font-size:13px; margin-top:8px;"><b>Suggested treatment:</b><ul style="margin:4px 0 0 18px;">${medHtml}</ul></div>` : ''}
         ${s.investigations && s.investigations.length ? `<div style="font-size:13px; margin-top:8px;"><b>Investigations:</b> ${escapeHtml(s.investigations.join(', '))}</div>` : ''}
         ${s.advice ? `<div style="font-size:13px; margin-top:8px;"><b>Advice:</b> ${escapeHtml(s.advice)}</div>` : ''}
+        ${s.diet && ((s.diet.eat && s.diet.eat.length) || (s.diet.avoid && s.diet.avoid.length)) ? `<div style="font-size:13px; margin-top:8px;"><b>🍽 Diet:</b>${s.diet.eat && s.diet.eat.length ? `<div style="margin-top:2px;"><b style="color:#15803d;">Eat:</b> ${escapeHtml(s.diet.eat.join(', '))}</div>` : ''}${s.diet.avoid && s.diet.avoid.length ? `<div style="margin-top:2px;"><b style="color:#b91c1c;">Avoid:</b> ${escapeHtml(s.diet.avoid.join(', '))}</div>` : ''}</div>` : ''}
         ${s.red_flags && s.red_flags.length ? `<div style="font-size:13px; margin-top:8px; color:#b91c1c;"><b>⚠ Red flags:</b> ${escapeHtml(s.red_flags.join(', '))}</div>` : ''}
         <div class="actions" style="margin-top:10px;">
           <button class="secondary" id="ai-use-dx">Use diagnosis</button>
