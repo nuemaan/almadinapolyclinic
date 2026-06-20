@@ -1,22 +1,21 @@
 // Al Madina Polyclinic — AI clinical-assistant endpoint (Vercel serverless).
 //
-// Reads the consult details and returns a SUGGESTED diagnosis + weight-based
-// treatment for the doctor to review. The Anthropic API key lives only here as a
-// Vercel env var (ANTHROPIC_API_KEY) — never in the browser. The call is gated to
-// logged-in staff: the request must carry a valid Supabase access token.
+// Uses Google Gemini's FREE API tier. Reads the consult details and returns a
+// SUGGESTED diagnosis + weight-based treatment for the doctor to review. Only
+// de-identified clinical facts are sent (NO patient name or phone). The API key
+// lives only here as a Vercel env var — never in the browser. The call is gated
+// to logged-in staff (must carry a valid Supabase access token).
 //
-// Required Vercel env vars:
-//   ANTHROPIC_API_KEY   — your Anthropic API key (sk-ant-...)
+// Required Vercel env var:
+//   GEMINI_API_KEY   — free key from https://aistudio.google.com/apikey
 // Optional:
-//   ANTHROPIC_MODEL     — defaults to claude-opus-4-8 (cost lever; can set
-//                         claude-sonnet-4-6 or claude-haiku-4-5)
-//   SUPABASE_URL        — defaults to the clinic project
-//   SUPABASE_ANON_KEY   — defaults to the clinic anon key (public)
+//   GEMINI_MODEL     — defaults to gemini-2.0-flash (free, fast)
+//   SUPABASE_URL / SUPABASE_ANON_KEY — default to the clinic project (public)
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://lkgzbiulaoialezogizu.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxrZ3piaXVsYW9pYWxlem9naXp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMjM2OTksImV4cCI6MjA5NTg5OTY5OX0.r7FaiK6YzRnZWp5OWx9n_soYUQsQghFWINh7TX-H6AE';
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-8';
+const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 
 const SYSTEM_PROMPT = `You are a clinical decision-support assistant for a busy pediatric & general polyclinic in Kashmir, India (Al Madina Polyclinic). A qualified doctor uses you while seeing a patient. You read the case details the doctor enters and propose the MOST LIKELY diagnosis and a practical, weight-based treatment plan.
 
@@ -27,34 +26,33 @@ Rules:
 - Always include a short antipyretic/supportive line when there is fever, and clear red-flag/referral advice.
 - If the information is insufficient to be confident, say so in "advice" and suggest what to check — do not invent findings.
 - Keep it safe: avoid contraindicated combos, flag drug allergies if mentioned, and never recommend anything you are unsure is appropriate for the age.
-- Output ONLY the JSON object that matches the provided schema. No prose outside it.`;
+- Output ONLY the JSON object that matches the provided schema.`;
 
+// Gemini responseSchema (OpenAPI-style, uppercase types).
 const SCHEMA = {
-  type: 'object',
+  type: 'OBJECT',
   properties: {
-    diagnosis: { type: 'string', description: 'The single most likely diagnosis.' },
-    differentials: { type: 'array', items: { type: 'string' }, description: 'Other possibilities to consider.' },
-    investigations: { type: 'array', items: { type: 'string' }, description: 'Tests that would help, if any.' },
+    diagnosis: { type: 'STRING' },
+    differentials: { type: 'ARRAY', items: { type: 'STRING' } },
+    investigations: { type: 'ARRAY', items: { type: 'STRING' } },
     treatment: {
-      type: 'array',
+      type: 'ARRAY',
       items: {
-        type: 'object',
+        type: 'OBJECT',
         properties: {
-          medicine: { type: 'string' },
-          dose: { type: 'string', description: 'Weight-based where possible, e.g. "5 mg/kg/dose".' },
-          route: { type: 'string' },
-          frequency: { type: 'string' },
-          duration: { type: 'string' }
+          medicine: { type: 'STRING' },
+          dose: { type: 'STRING' },
+          route: { type: 'STRING' },
+          frequency: { type: 'STRING' },
+          duration: { type: 'STRING' },
         },
         required: ['medicine', 'dose'],
-        additionalProperties: false
-      }
+      },
     },
-    advice: { type: 'string', description: 'Supportive care, follow-up, and what to check if unsure.' },
-    red_flags: { type: 'array', items: { type: 'string' }, description: 'Warning signs that need urgent review/referral.' }
+    advice: { type: 'STRING' },
+    red_flags: { type: 'ARRAY', items: { type: 'STRING' } },
   },
   required: ['diagnosis', 'treatment', 'advice'],
-  additionalProperties: false
 };
 
 async function verifyStaff(token) {
@@ -90,10 +88,13 @@ function buildCase(b) {
   return lines.join('\n');
 }
 
+const SAFETY = ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT']
+  .map((category) => ({ category, threshold: 'BLOCK_NONE' }));
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'POST only' }); return; }
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) { res.status(503).json({ error: 'AI is not configured yet. Ask the admin to set ANTHROPIC_API_KEY.' }); return; }
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) { res.status(503).json({ error: 'AI is not configured yet. Ask the admin to set GEMINI_API_KEY.' }); return; }
 
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!(await verifyStaff(token))) { res.status(401).json({ error: 'Not authorized — please sign in to the console.' }); return; }
@@ -101,38 +102,41 @@ module.exports = async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   body = body || {};
-  const caseText = buildCase(body);
   if (!body.complaint && !body.investigations) {
     res.status(400).json({ error: 'Enter at least a complaint or an investigation result first.' });
     return;
   }
+  const caseText = buildCase(body);
 
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const r = await fetch(url, {
       method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1024,
-        system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-        output_config: { format: { type: 'json_schema', schema: SCHEMA } },
-        messages: [{ role: 'user', content: `Patient case:\n${caseText}` }],
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text: `Patient case:\n${caseText}` }] }],
+        safetySettings: SAFETY,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: SCHEMA,
+          temperature: 0.2,
+          maxOutputTokens: 1024,
+        },
       }),
     });
-    const data = await r.json();
+    const data = await r.json().catch(() => ({}));
     if (!r.ok) {
-      res.status(502).json({ error: data?.error?.message || 'AI request failed.' });
+      res.status(502).json({ error: (data && data.error && data.error.message) || 'AI request failed.' });
       return;
     }
-    const textBlock = (data.content || []).find((b) => b.type === 'text');
+    const cand = (data.candidates || [])[0];
+    const text = cand && cand.content && cand.content.parts && cand.content.parts[0] && cand.content.parts[0].text;
+    if (!text) { res.status(502).json({ error: 'The AI could not produce a suggestion for this case. Try adding more detail.' }); return; }
     let suggestion;
-    try { suggestion = JSON.parse(textBlock ? textBlock.text : '{}'); }
+    try { suggestion = JSON.parse(text); }
     catch { res.status(502).json({ error: 'Could not read the AI response.' }); return; }
-    res.status(200).json({ suggestion, model: data.model });
+    res.status(200).json({ suggestion, model: MODEL });
   } catch (e) {
     res.status(502).json({ error: 'Could not reach the AI service. Try again.' });
   }
