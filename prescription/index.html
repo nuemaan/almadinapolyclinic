@@ -247,6 +247,8 @@
   .rx-dated { text-align: right; margin-top: 14px; font-size: 14px; }
   .rx-rule { border-bottom: 2px solid #0b1f3a; margin: 5px 0; }
   .rx-patient { display: flex; gap: 22px; flex-wrap: wrap; font-size: 14px; padding: 3px 0; }
+  /* Prescription always reads in capitals, however the doctor typed it. */
+  .rx-patient, .rx-body { text-transform: uppercase; }
   .rx-body { display: grid; grid-template-columns: 150px 1fr; min-height: 460px; }
   .rx-inv { font-weight: 800; font-size: 14px; padding-top: 10px; }
   .rx-content { border-left: 2px solid #0b1f3a; padding: 8px 0 0 18px; }
@@ -632,15 +634,13 @@
     if (!currentSession) return;
     renderDoctorStats();
     $('dq-session').textContent = `${formatDate(currentSession.session_date)} · ${currentSession.session.toUpperCase()}`;
-    const { data, error } = await sb
-      .from('visits')
-      .select('id,token_number,source,status,patients(id,name,phone,age_years,age_months,age_days,gender,residence)')
-      .eq('session_date', currentSession.session_date)
-      .eq('session', currentSession.session)
-      .in('status', ['waiting', 'attending', 'noshow', 'done'])
-      .order('token_number', { ascending: true });
+    const { data: raw, error } = await sb.rpc('session_queue');
     const list = $('dq-list');
     if (error) { list.innerHTML = `<div class="empty">Error: ${escapeHtml(error.message)}</div>`; return; }
+    const data = (raw || []).map(r => ({
+      id: r.id, token_number: r.token_number, source: r.source, status: r.status, is_followup: r.is_followup,
+      patients: { id: r.patient_id, name: r.name, phone: r.phone, age_years: r.age_years, age_months: r.age_months, age_days: r.age_days, gender: r.gender, residence: r.residence },
+    }));
     if (!data.length) { list.innerHTML = '<div class="empty">No patients waiting.</div>'; return; }
     // Seen patients sink to the bottom; waiting / serving / no-show keep token order.
     const sorted = [...data].sort((a, b) =>
@@ -651,6 +651,9 @@
         : isDone ? '<span class="pill" style="background:#dcfce7;color:#15803d;">✓ seen</span>'
         : isNo   ? '<span class="pill" style="background:#fee2e2;color:#b91c1c;">no-show</span>'
         : `<span class="pill ${v.source}">${v.source}</span>`;
+      const tag = v.is_followup
+        ? '<span class="pill" style="background:#e0e7ff;color:#4338ca;">Follow-up</span>'
+        : '<span class="pill" style="background:#dcfce7;color:#15803d;">New</span>';
       const rowStyle = isNo ? 'background:#fff1f2;border-color:#fecaca;' : (isDone ? 'opacity:.66;' : '');
       return `
       <div class="rx-item ${v.id === selectedVisitId ? 'selected' : ''}" data-id="${v.id}" style="${rowStyle}">
@@ -659,7 +662,7 @@
           <div class="name">${escapeHtml(v.patients?.name || '—')}</div>
           <div class="meta">📞 ${escapeHtml(v.patients?.phone || '—')}</div>
         </div>
-        ${pill}
+        <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">${pill}${tag}</div>
       </div>`;
     }).join('');
     list.querySelectorAll('.rx-item').forEach(it => it.addEventListener('click', () => selectVisit(it.dataset.id, sorted)));
@@ -717,10 +720,10 @@
     const defaultDoc = (rx && rx.doctor_name) || (DOCTORS.includes(staffProfile.name) ? staffProfile.name : DOCTORS[0]);
     detail.innerHTML = `
       <div class="card">
-        <h2>Consultation — Token #${v.token_number}</h2>
+        <h2>Consultation — Token #${v.token_number} ${v.is_followup ? '<span class="pill" style="background:#e0e7ff;color:#4338ca;vertical-align:middle;">Follow-up</span>' : '<span class="pill" style="background:#dcfce7;color:#15803d;vertical-align:middle;">New</span>'}</h2>
         <div class="grid">
           <div><label>Patient name <span style="font-weight:500; text-transform:none; color:var(--muted);">(editable — fix spelling)</span></label><input id="dq-name" value="${escapeHtml(p.name||'')}" placeholder="Patient full name"></div>
-          <div><label>Phone</label><input value="${escapeHtml(p.phone||'')}" disabled></div>
+          <div><label>Phone <span style="font-weight:500; text-transform:none; color:var(--muted);">(editable)</span></label><input id="dq-phone" inputmode="numeric" maxlength="10" value="${escapeHtml(p.phone||'')}" placeholder="10-digit mobile"></div>
           <div><label>Age</label>
             <div style="display:flex; gap:6px;">
               <input id="dq-age-y" type="number" min="0" value="${p.age_years ?? ''}"  placeholder="Y" style="width:33%; min-width:0;">
@@ -864,32 +867,42 @@
       selectedVisitId = null; detail.innerHTML = '<div class="card"><div class="empty">Select a patient from the queue.</div></div>';
       loadQueue(); toast('Marked no-show');
     });
-    // When the doctor corrects the name to one that already exists on this phone,
-    // show THAT record's previous visits AND its follow-up card straight away
-    // (the merge happens on save).
-    const nameEl = $('dq-name');
+    // When the doctor corrects the name or phone to one that already exists on a
+    // phone, show THAT record's previous visits AND its follow-up card straight
+    // away (the merge happens on save).
+    const nameEl = $('dq-name'), phoneEl = $('dq-phone');
     const norm = (s) => (s || '').toLowerCase().replace(/\s+/g, ' ').trim();
-    if (nameEl) nameEl.addEventListener('change', async () => {
-      const nm = nameEl.value.trim();
-      if (!nm || norm(nm) === norm(p.name)) { loadHistory(p.id, false); revealFollowup(lastRx); return; }
+    const digits = (s) => (s || '').replace(/\D/g, '');
+    if (phoneEl) phoneEl.addEventListener('input', () => { phoneEl.value = digits(phoneEl.value).slice(0, 10); });
+    async function refreshMatch() {
+      const useName = (nameEl ? nameEl.value.trim() : '') || p.name || '';
+      const ph = phoneEl ? digits(phoneEl.value) : '';
+      const usePhone = ph.length === 10 ? ph : (p.phone || '');
+      const changed = norm(useName) !== norm(p.name) || usePhone !== (p.phone || '');
+      if (!changed) { loadHistory(p.id, false, v.id); revealFollowup(lastRx); return; }
       try {
-        const { data: matchId } = await sb.rpc('patient_by_phone_name', { p_phone: p.phone, p_name: nm });
+        const { data: matchId } = await sb.rpc('patient_by_phone_name', { p_phone: usePhone, p_name: useName });
         const targetId = matchId && matchId !== p.id ? matchId : p.id;
-        loadHistory(targetId, targetId !== p.id);
+        loadHistory(targetId, targetId !== p.id, v.id);
         revealFollowup(targetId !== p.id ? await latestRxFor(targetId) : lastRx);
-      } catch { loadHistory(p.id, false); revealFollowup(lastRx); }
-    });
-    loadHistory(p.id, false);
+      } catch { loadHistory(p.id, false, v.id); revealFollowup(lastRx); }
+    }
+    if (nameEl) nameEl.addEventListener('change', refreshMatch);
+    if (phoneEl) phoneEl.addEventListener('change', refreshMatch);
+    loadHistory(p.id, false, v.id);
   }
 
-  async function loadHistory(pid, matched) {
+  async function loadHistory(pid, matched, excludeVisitId) {
     const el = $('dq-history');
-    // Per-child history: ALL previous prescriptions for THIS patient (not siblings
-    // on the same phone). Identity is (phone + name). Each prescription also shows
-    // its follow-up encounters so the doctor sees every prior visit.
-    const { data, error } = await sb.from('prescriptions')
-      .select('created_at,doctor_name,notes,medicines,complaint,diagnosis,followups')
+    // Per-child history: previous prescriptions for THIS patient (not siblings on
+    // the same phone). The current visit's own prescription is excluded — editing
+    // a just-seen patient must not list today as a "previous visit". Each
+    // prescription also shows its follow-up encounters.
+    let q = sb.from('prescriptions')
+      .select('created_at,doctor_name,notes,medicines,complaint,diagnosis,followups,visit_id')
       .eq('patient_id', pid).order('created_at', { ascending: false }).limit(100);
+    if (excludeVisitId) q = q.neq('visit_id', excludeVisitId);
+    const { data, error } = await q;
     if (error) { el.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
     const note = matched ? '<div class="hist-note" style="margin-bottom:8px; color:var(--teal-dark); font-weight:700;">↩ Matched an existing record on this phone — these visits will be merged when you save.</div>' : '';
     if (!data.length) { el.innerHTML = note || '<div class="empty">First visit — no previous prescriptions.</div>'; return; }
@@ -949,6 +962,7 @@
       p_temperature: $('dq-temp') && $('dq-temp').value.trim() ? $('dq-temp').value.trim() : null,
       p_weight: $('dq-weight') && $('dq-weight').value.trim() ? $('dq-weight').value.trim() : null,
       p_name: $('dq-name') && $('dq-name').value.trim() ? $('dq-name').value.trim() : null,
+      p_phone: $('dq-phone') && /^\d{10}$/.test($('dq-phone').value.trim()) ? $('dq-phone').value.trim() : null,
       p_examination: examination,
       p_diagnosis: readSelectCustom('dq-diagnosis'),
       p_lab: readSelectCustom('dq-lab'),
@@ -973,6 +987,7 @@
       p_treatment: treatment || null, p_investigation: investigation || null,
       p_doctor: ($('dq-doctor') && $('dq-doctor').value) || staffProfile.name,
       p_name: ($('dq-name') && $('dq-name').value.trim()) || null,
+      p_phone: $('dq-phone') && /^\d{10}$/.test($('dq-phone').value.trim()) ? $('dq-phone').value.trim() : null,
     });
     if (btn) btn.disabled = false;
     if (error) { toast('Failed: ' + (error.message || error), '#ef4444'); return; }
@@ -1079,6 +1094,7 @@
             <span><b>Patient's Name:</b> ${escapeHtml(p.name || '')}</span>
             <span><b>Age:</b> ${escapeHtml(ageGender)}</span>
             <span><b>Weight:</b> ${escapeHtml(rx.weight ? rx.weight + ' kg' : '')}</span>
+            <span><b>Phone:</b> ${escapeHtml(p.phone || '')}</span>
             <span><b>R/o:</b> ${escapeHtml(p.residence || '')}</span>
           </div>
           <div class="rx-rule"></div>
