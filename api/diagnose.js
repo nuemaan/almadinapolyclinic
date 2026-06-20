@@ -121,7 +121,10 @@ module.exports = async function handler(req, res) {
           responseMimeType: 'application/json',
           responseSchema: SCHEMA,
           temperature: 0.2,
-          maxOutputTokens: 1024,
+          maxOutputTokens: 2048,
+          // 2.5-flash is a "thinking" model — disable thinking so the output
+          // budget produces the JSON (otherwise it spends it all reasoning).
+          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
     });
