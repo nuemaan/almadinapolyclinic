@@ -3,3 +3,5 @@ node_modules/
 *-backup.*
 *-v2-backup.*
 .claude/
+.vercel
+.env*.local
