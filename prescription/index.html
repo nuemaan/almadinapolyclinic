@@ -766,6 +766,13 @@
         <div style="margin-top:12px;"><label>Lab Investigation</label>${selectCustom('dq-lab', LABS)}</div>
       </div>
 
+      <div class="card" id="ai-card">
+        <h2>🤖 AI Assistant <span style="font-weight:600; font-size:12px; color:var(--muted);">(suggestion — you decide)</span></h2>
+        <p style="font-size:12.5px; color:var(--muted); margin:-4px 0 10px;">Reads the complaint, examination, temperature and investigation results above and suggests a diagnosis &amp; weight-based treatment. Always review before prescribing.</p>
+        <div class="actions"><button class="secondary" id="ai-btn">✨ Get AI suggestion</button></div>
+        <div id="ai-result" style="margin-top:12px;"></div>
+      </div>
+
       <div class="card">
         <h2>Previous Visits</h2>
         <div class="hist" id="dq-history"><div class="empty">Loading history…</div></div>
@@ -826,6 +833,7 @@
     }
     $('add-med-btn').addEventListener('click', () => $('med-rows').appendChild(makeMedRow()));
     $('save-rx-btn').addEventListener('click', () => saveConsult(v));
+    if ($('ai-btn')) $('ai-btn').addEventListener('click', () => runAI());
     // Follow-up card (returning patient) — appends a dated note to the last
     // prescription. Shown when the patient (by record, or by a corrected name
     // that matches an existing record on this phone) has a Rx in the last 14 days.
@@ -995,6 +1003,71 @@
     $('dq-detail').innerHTML = '<div class="card"><div class="empty">Follow-up added ✔ — it prints on the last prescription. Select the next patient.</div></div>';
     loadQueue();
     toast('Follow-up added to last prescription');
+  }
+
+  /* ====================== AI ASSISTANT (server-side, staff-only) ====================== */
+  async function runAI() {
+    const out = $('ai-result'), btn = $('ai-btn');
+    const num = (id) => $(id) && $(id).value.trim() ? parseInt($(id).value, 10) : null;
+    const val = (id) => ($(id) && $(id).value.trim()) || null;
+    const payload = {
+      age_years: num('dq-age-y'), age_months: num('dq-age-m'), age_days: num('dq-age-d'),
+      gender: val('dq-gender'), weight: val('dq-weight'), temperature: val('dq-temp'),
+      complaint: val('dq-complaint'),
+      exam_general: val('dq-ex-general'), exam_chest: val('dq-ex-chest'),
+      exam_abdomen: readSelectCustom('dq-ex-abdomen'), exam_cvs: val('dq-ex-cvs'), exam_other: val('dq-ex-other'),
+      investigations: readSelectCustom('dq-lab'),
+    };
+    if (!payload.complaint && !payload.investigations) {
+      out.innerHTML = '<div class="empty" style="color:#ef4444;">Enter a complaint or an investigation result first.</div>'; return;
+    }
+    btn.disabled = true; out.innerHTML = '<div class="empty">🤖 Thinking…</div>';
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      const res = await fetch('/api/diagnose', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', Authorization: 'Bearer ' + (session ? session.access_token : '') },
+        body: JSON.stringify(payload),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { out.innerHTML = `<div class="empty" style="color:#ef4444;">${escapeHtml(j.error || 'AI unavailable')}</div>`; return; }
+      renderAI(j.suggestion || {});
+    } catch (e) {
+      out.innerHTML = '<div class="empty" style="color:#ef4444;">Could not reach the AI service.</div>';
+    } finally { btn.disabled = false; }
+  }
+
+  function renderAI(s) {
+    const out = $('ai-result');
+    const meds = s.treatment || [];
+    const medHtml = meds.map(m => `<li><b>${escapeHtml(m.medicine || '')}</b> ${escapeHtml([m.dose, m.route, m.frequency, m.duration].filter(Boolean).join(' · '))}</li>`).join('');
+    out.innerHTML = `
+      <div style="background:var(--teal-bg); border:1px solid var(--teal-soft); border-radius:12px; padding:12px 14px;">
+        <div style="font-weight:800; color:var(--teal-dark);">Likely: ${escapeHtml(s.diagnosis || '—')}</div>
+        ${s.differentials && s.differentials.length ? `<div style="font-size:13px; margin-top:4px;"><b>Consider also:</b> ${escapeHtml(s.differentials.join(', '))}</div>` : ''}
+        ${medHtml ? `<div style="font-size:13px; margin-top:8px;"><b>Suggested treatment:</b><ul style="margin:4px 0 0 18px;">${medHtml}</ul></div>` : ''}
+        ${s.investigations && s.investigations.length ? `<div style="font-size:13px; margin-top:8px;"><b>Investigations:</b> ${escapeHtml(s.investigations.join(', '))}</div>` : ''}
+        ${s.advice ? `<div style="font-size:13px; margin-top:8px;"><b>Advice:</b> ${escapeHtml(s.advice)}</div>` : ''}
+        ${s.red_flags && s.red_flags.length ? `<div style="font-size:13px; margin-top:8px; color:#b91c1c;"><b>⚠ Red flags:</b> ${escapeHtml(s.red_flags.join(', '))}</div>` : ''}
+        <div class="actions" style="margin-top:10px;">
+          <button class="secondary" id="ai-use-dx">Use diagnosis</button>
+          ${meds.length ? '<button class="secondary" id="ai-use-rx">Add medicines</button>' : ''}
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-top:8px;">AI suggestion — the doctor verifies. Confirm dosing &amp; suitability before prescribing.</div>
+      </div>`;
+    if ($('ai-use-dx')) $('ai-use-dx').addEventListener('click', () => {
+      const sel = $('dq-diagnosis'); if (!sel || !s.diagnosis) return;
+      const opt = Array.from(sel.options).find(o => o.value === s.diagnosis);
+      if (opt) sel.value = s.diagnosis;
+      else { sel.value = '__custom__'; const ci = $('dq-diagnosis-custom'); if (ci) { ci.value = s.diagnosis; ci.style.display = ''; } }
+      toast('Diagnosis filled');
+    });
+    if ($('ai-use-rx')) $('ai-use-rx').addEventListener('click', () => {
+      meds.forEach(m => $('med-rows').appendChild(makeMedRow({
+        name: m.medicine, frequency: [m.dose, m.frequency, m.duration].filter(Boolean).join(' '),
+      })));
+      toast('Medicines added — review & edit');
+    });
   }
 
   /* ====================== PHARMACIST: prescriptions from DB ====================== */
