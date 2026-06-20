@@ -15,7 +15,7 @@
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://lkgzbiulaoialezogizu.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxrZ3piaXVsYW9pYWxlem9naXp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMjM2OTksImV4cCI6MjA5NTg5OTY5OX0.r7FaiK6YzRnZWp5OWx9n_soYUQsQghFWINh7TX-H6AE';
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 const SYSTEM_PROMPT = `You are a clinical decision-support assistant for a busy pediatric & general polyclinic in Kashmir, India (Al Madina Polyclinic). A qualified doctor uses you while seeing a patient. You read the case details the doctor enters and propose the MOST LIKELY diagnosis and a practical, weight-based treatment plan.
 
