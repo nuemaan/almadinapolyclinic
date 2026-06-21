@@ -833,7 +833,7 @@
     }
     $('add-med-btn').addEventListener('click', () => $('med-rows').appendChild(makeMedRow()));
     $('save-rx-btn').addEventListener('click', () => saveConsult(v));
-    if ($('ai-btn')) $('ai-btn').addEventListener('click', () => runAI());
+    if ($('ai-btn')) $('ai-btn').addEventListener('click', () => runAI(v));
     // Follow-up card (returning patient) — appends a dated note to the last
     // prescription. Shown when the patient (by record, or by a corrected name
     // that matches an existing record on this phone) has a Rx in the last 14 days.
@@ -1006,7 +1006,7 @@
   }
 
   /* ====================== AI ASSISTANT (server-side, staff-only) ====================== */
-  async function runAI() {
+  async function runAI(v) {
     const out = $('ai-result'), btn = $('ai-btn');
     const num = (id) => $(id) && $(id).value.trim() ? parseInt($(id).value, 10) : null;
     const val = (id) => ($(id) && $(id).value.trim()) || null;
@@ -1022,6 +1022,22 @@
       out.innerHTML = '<div class="empty" style="color:#ef4444;">Enter a complaint or an investigation result first.</div>'; return;
     }
     btn.disabled = true; out.innerHTML = '<div class="empty">🤖 Thinking…</div>';
+    // Longitudinal review: pass this patient's previous visits (de-identified) so
+    // the AI can flag recurrent patterns / possibly-missed diagnoses.
+    try {
+      const pid = v && v.patients && v.patients.id;
+      if (pid) {
+        const { data: hx } = await sb.from('prescriptions')
+          .select('created_at,diagnosis,complaint,medicines,followups,visit_id')
+          .eq('patient_id', pid).order('created_at', { ascending: false }).limit(25);
+        payload.history = (hx || []).filter(r => !v || r.visit_id !== v.id).map(r => ({
+          date: (r.created_at || '').slice(0, 10),
+          diagnosis: r.diagnosis || '', complaint: r.complaint || '',
+          medicines: (r.medicines || []).map(m => m.name).filter(Boolean),
+          followups: (r.followups || []).map(f => [f.complaint, f.treatment].filter(Boolean).join(': ')).filter(Boolean),
+        }));
+      }
+    } catch {}
     try {
       const { data: { session } } = await sb.auth.getSession();
       const res = await fetch('/api/diagnose', {
@@ -1044,6 +1060,7 @@
     out.innerHTML = `
       <div style="background:var(--teal-bg); border:1px solid var(--teal-soft); border-radius:12px; padding:12px 14px;">
         <div style="font-weight:800; color:var(--teal-dark);">Likely: ${escapeHtml(s.diagnosis || '—')}</div>
+        ${s.concerns && s.concerns.length ? `<div style="font-size:13px; margin-top:8px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:8px 10px;"><b>🔎 Worth reconsidering (from past visits):</b><ul style="margin:4px 0 0 18px;">${s.concerns.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul></div>` : ''}
         ${s.differentials && s.differentials.length ? `<div style="font-size:13px; margin-top:4px;"><b>Consider also:</b> ${escapeHtml(s.differentials.join(', '))}</div>` : ''}
         ${medHtml ? `<div style="font-size:13px; margin-top:8px;"><b>Suggested treatment:</b><ul style="margin:4px 0 0 18px;">${medHtml}</ul></div>` : ''}
         ${s.investigations && s.investigations.length ? `<div style="font-size:13px; margin-top:8px;"><b>Investigations:</b> ${escapeHtml(s.investigations.join(', '))}</div>` : ''}

@@ -25,6 +25,7 @@ Rules:
 - Prefer drugs and formulations commonly available in India (syrups/drops for young children). Use generic names; a brand in brackets is optional.
 - Always include a short antipyretic/supportive line when there is fever, and clear red-flag/referral advice.
 - Always fill "diet": age-appropriate foods to eat/encourage and foods to avoid, relevant to this diagnosis (locally available Kashmiri/Indian foods where possible).
+- You may be given the patient's PREVIOUS VISITS. Review them as a whole and use "concerns" to flag anything the doctor should reconsider: a recurrent or non-resolving pattern pointing to an underlying or serious condition (e.g. repeated UTIs → possible vesicoureteric reflux / renal anomaly; recurrent wheeze → asthma; repeated unexplained fevers; poor weight gain / failure to thrive; same complaint returning despite treatment), a diagnosis that may have been missed, repeated or overused antibiotics / polypharmacy, and any drug-safety issue (interaction, duplication, or age/weight-inappropriate dose) in the current plan or across visits. Phrase these as possibilities to consider for the doctor, never as accusations. Return an empty list if nothing stands out.
 - If the information is insufficient to be confident, say so in "advice" and suggest what to check — do not invent findings.
 - Keep it safe: avoid contraindicated combos, flag drug allergies if mentioned, and never recommend anything you are unsure is appropriate for the age.
 - Output ONLY the JSON object that matches the provided schema.`;
@@ -60,6 +61,7 @@ const SCHEMA = {
       required: ['eat', 'avoid'],
     },
     red_flags: { type: 'ARRAY', items: { type: 'STRING' } },
+    concerns: { type: 'ARRAY', items: { type: 'STRING' } },
   },
   required: ['diagnosis', 'treatment', 'advice', 'diet'],
 };
@@ -94,6 +96,14 @@ function buildCase(b) {
   if (exam.length)    lines.push(`Examination — ${exam.join('; ')}`);
   if (b.investigations) lines.push(`Investigations/results: ${b.investigations}`);
   if (b.notes)        lines.push(`Notes: ${b.notes}`);
+  if (Array.isArray(b.history) && b.history.length) {
+    const h = b.history.slice(0, 25).map((v) => {
+      const meds = (v.medicines || []).filter(Boolean).join(', ');
+      const fu = (v.followups || []).filter(Boolean).join(' | ');
+      return `• ${v.date || '?'}: ${v.diagnosis || '(no diagnosis recorded)'}${v.complaint ? ` — ${v.complaint}` : ''}${meds ? ` [meds: ${meds}]` : ''}${fu ? ` [follow-up: ${fu}]` : ''}`;
+    }).join('\n');
+    lines.push(`\nPrevious visits for THIS patient (most recent first):\n${h}`);
+  }
   return lines.join('\n');
 }
 
@@ -130,7 +140,7 @@ module.exports = async function handler(req, res) {
           responseMimeType: 'application/json',
           responseSchema: SCHEMA,
           temperature: 0.2,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 3072,
           // 2.5-flash is a "thinking" model — disable thinking so the output
           // budget produces the JSON (otherwise it spends it all reasoning).
           thinkingConfig: { thinkingBudget: 0 },
