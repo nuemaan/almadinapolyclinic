@@ -655,6 +655,9 @@
         ? '<span class="pill" style="background:#e0e7ff;color:#4338ca;">Follow-up</span>'
         : '<span class="pill" style="background:#dcfce7;color:#15803d;">New</span>';
       const rowStyle = isNo ? 'background:#fff1f2;border-color:#fecaca;' : (isDone ? 'opacity:.66;' : '');
+      const nsBtn = (v.status === 'waiting' || v.status === 'attending')
+        ? `<button class="ns-btn" data-noshow="${v.id}" title="Mark no-show" style="padding:6px 10px; border:1px solid #fecaca; background:#fff1f2; color:#b91c1c; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; white-space:nowrap;">No-show</button>`
+        : '';
       return `
       <div class="rx-item ${v.id === selectedVisitId ? 'selected' : ''}" data-id="${v.id}" style="${rowStyle}">
         <div class="tok">#${v.token_number}</div>
@@ -663,9 +666,17 @@
           <div class="meta">📞 ${escapeHtml(v.patients?.phone || '—')}</div>
         </div>
         <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">${pill}${tag}</div>
+        ${nsBtn}
       </div>`;
     }).join('');
     list.querySelectorAll('.rx-item').forEach(it => it.addEventListener('click', () => selectVisit(it.dataset.id, sorted)));
+    list.querySelectorAll('button[data-noshow]').forEach(b => b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      b.disabled = true;
+      const { error } = await sb.rpc('set_status', { p_visit_id: b.dataset.noshow, p_status: 'noshow' });
+      if (error) { toast('Failed: ' + error.message, '#ef4444'); b.disabled = false; return; }
+      toast('Marked no-show'); loadQueue();
+    }));
   }
 
   async function selectVisit(id, data) {
