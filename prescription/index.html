@@ -761,7 +761,7 @@
         <div style="margin-top:12px;"><label>Residence (R/o) — entered by patient</label><input id="dq-residence" value="${escapeHtml(p.residence || '')}" placeholder="—" disabled></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="hist-exam-card">
         <h2>History &amp; Examination</h2>
         <div><label>Complaint</label><textarea id="dq-complaint" placeholder="Presenting complaint…"></textarea></div>
         <div style="margin-top:12px; max-width:240px;"><label>Temperature (°F)</label><input id="dq-temp" type="number" step="0.1" inputmode="decimal" min="80" max="115" placeholder="e.g. 100.4"></div>
@@ -800,13 +800,13 @@
         <div class="actions"><button class="primary" id="save-fu-btn">💬 Save Follow-up (no new Rx)</button></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="medicines-card">
         <h2>Medicines</h2>
         <div id="med-rows"></div>
         <div class="actions"><button class="secondary" id="add-med-btn">+ Add Medicine</button></div>
       </div>
 
-      <div class="actions">
+      <div class="actions" id="rx-actions">
         <button class="primary" id="save-rx-btn">${isEdit ? '💾 Update Prescription' : '💾 Save Prescription &amp; mark seen'}</button>
         <button class="danger" id="noshow-btn" style="padding:11px 18px;">Mark No-show</button>
       </div>`;
@@ -878,7 +878,17 @@
     }
     const fb = $('save-fu-btn');
     if (fb) fb.addEventListener('click', () => saveFollowup(v));
-    if (lastRx) revealFollowup(lastRx);
+
+    // Layout by New vs Follow-up:
+    //  • New patient   → hide the follow-up section (full prescription form shown).
+    //  • Follow-up     → show only Follow-up + Previous Visits + AI; hide the
+    //    new-prescription form (History & Examination, Medicines, Save button).
+    const isFU = !!(v && v.is_followup);
+    if (isFU) {
+      ['hist-exam-card', 'medicines-card'].forEach(id => { const el = $(id); if (el) el.style.display = 'none'; });
+      const sx = $('save-rx-btn'); if (sx) sx.style.display = 'none';
+      if (lastRx) revealFollowup(lastRx);
+    }
 
     $('noshow-btn').addEventListener('click', async () => {
       if (!confirm('Mark this patient as no-show?')) return;
@@ -1024,10 +1034,14 @@
     const payload = {
       age_years: num('dq-age-y'), age_months: num('dq-age-m'), age_days: num('dq-age-d'),
       gender: val('dq-gender'), weight: val('dq-weight'), temperature: val('dq-temp'),
-      complaint: val('dq-complaint'),
+      // Fall back to the follow-up boxes for returning patients (the main
+      // History & Examination card is hidden in follow-up mode).
+      complaint: val('dq-complaint') || val('dq-fu-complaint'),
       exam_general: val('dq-ex-general'), exam_chest: val('dq-ex-chest'),
-      exam_abdomen: readSelectCustom('dq-ex-abdomen'), exam_cvs: val('dq-ex-cvs'), exam_other: val('dq-ex-other'),
-      investigations: readSelectCustom('dq-lab'),
+      exam_abdomen: readSelectCustom('dq-ex-abdomen'), exam_cvs: val('dq-ex-cvs'),
+      exam_other: val('dq-ex-other') || val('dq-fu-exam'),
+      investigations: readSelectCustom('dq-lab') || val('dq-fu-investigation'),
+      notes: val('dq-fu-treatment'),
     };
     if (!payload.complaint && !payload.investigations) {
       out.innerHTML = '<div class="empty" style="color:#ef4444;">Enter a complaint or an investigation result first.</div>'; return;
