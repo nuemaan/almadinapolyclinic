@@ -125,6 +125,28 @@
   .stat-chip .v { font-size: 24px; font-weight: 800; color: var(--teal-dark); line-height: 1; }
   .stat-chip .l { font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 5px; }
 
+  /* Reception desk */
+  .rc-hint { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+  .rc-card {
+    background: #fff; border: 1px solid rgba(13,148,136,0.14); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(13,148,136,0.05);
+  }
+  .rc-card.attending { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.15); }
+  .rc-card.done { opacity: .62; }
+  .rc-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .rc-tok { font-size: 17px; font-weight: 800; color: var(--teal-dark); background: var(--teal-bg); border-radius: 10px; padding: 5px 11px; }
+  .rc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  .rc-grid .full { grid-column: 1 / -1; }
+  .rc-grid label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+  .rc-grid input { width: 100%; padding: 9px 11px; border: 1px solid #d8e0e0; border-radius: 9px; font-size: 14px; }
+  .rc-age { display: flex; gap: 6px; }
+  .rc-age input { text-align: center; }
+  .rc-res { font-size: 13.5px; color: var(--ink); padding: 8px 0; }
+  .rc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .rc-save { padding: 9px 20px; border: 0; border-radius: 9px; background: var(--teal); color: #fff; font-weight: 800; font-size: 13.5px; cursor: pointer; }
+  .rc-save:disabled { opacity: .55; cursor: default; }
+  @media (max-width: 460px) { .rc-grid { grid-template-columns: 1fr; } }
+
   .sch-sess { border: 1px solid var(--teal-soft); background: var(--teal-bg); border-radius: 12px; padding: 14px; }
   .sch-toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: var(--teal-dark); text-transform: none; letter-spacing: 0; margin-bottom: 10px; }
   .sch-toggle input { width: auto; }
@@ -354,6 +376,7 @@
   </div>
   <div class="tabs" id="tabs">
     <button class="tab-btn active" data-tab="doctor">Doctor</button>
+    <button class="tab-btn" data-tab="reception">Reception</button>
     <button class="tab-btn" data-tab="pharmacist">Pharmacist</button>
     <button class="tab-btn" data-tab="schedule">Schedule</button>
     <button class="tab-btn" data-tab="lab">Lab</button>
@@ -375,6 +398,17 @@
       </div>
       <div id="dq-detail"><div class="card"><div class="empty">Select a patient from the queue to begin.</div></div></div>
     </div>
+  </section>
+
+  <!-- RECEPTION PANEL — intake desk: stats + editable queue -->
+  <section id="panel-reception" class="panel">
+    <div id="rc-stats" class="stat-strip"></div>
+    <div class="rx-list-head">
+      <strong style="color:var(--teal-dark)">Patients in queue</strong>
+      <span class="sess" id="rc-session">—</span>
+    </div>
+    <p class="rc-hint">Tap a field to correct it, then <b>Save</b>. Changes go straight to the doctor's queue.</p>
+    <div id="rc-list"><div class="empty">Loading…</div></div>
   </section>
 
   <!-- PHARMACIST PANEL — prescriptions from the database -->
@@ -517,8 +551,8 @@
   };
 
   const TABS_BY_ROLE = {
-    doctor:     ['doctor', 'pharmacist', 'schedule', 'lab'],
-    reception:  ['doctor', 'pharmacist', 'schedule', 'lab'],
+    doctor:     ['doctor', 'reception', 'pharmacist', 'schedule', 'lab'],
+    reception:  ['reception'],
     lab:        ['lab'],
     pharmacist: ['schedule', 'pharmacist', 'lab'],
   };
@@ -561,10 +595,10 @@
     const allowed = TABS_BY_ROLE[staffProfile.role] || ['doctor'];
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('hidden', !allowed.includes(b.dataset.tab)));
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
-    activateTab(allowed[0]);
 
     const { data: cs } = await sb.rpc('app_current_session');
     currentSession = Array.isArray(cs) ? cs[0] : cs;
+    activateTab(allowed[0]);
     startQueueLive();
   }
 
@@ -594,6 +628,7 @@
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     $('panel-' + tab).classList.add('active');
     if (tab === 'doctor') loadQueue();
+    if (tab === 'reception') loadReception();
     if (tab === 'pharmacist') loadPrescriptions();
     if (tab === 'lab') renderLab();
     if (tab === 'schedule') loadSchedule();
@@ -638,7 +673,7 @@
     const list = $('dq-list');
     if (error) { list.innerHTML = `<div class="empty">Error: ${escapeHtml(error.message)}</div>`; return; }
     const data = (raw || []).map(r => ({
-      id: r.id, token_number: r.token_number, source: r.source, status: r.status, is_followup: r.is_followup,
+      id: r.id, token_number: r.token_number, source: r.source, status: r.status, is_followup: r.is_followup, weight: r.weight,
       patients: { id: r.patient_id, name: r.name, phone: r.phone, age_years: r.age_years, age_months: r.age_months, age_days: r.age_days, gender: r.gender, residence: r.residence },
     }));
     if (!data.length) { list.innerHTML = '<div class="empty">No patients waiting.</div>'; return; }
@@ -677,6 +712,74 @@
       if (error) { toast('Failed: ' + error.message, '#ef4444'); b.disabled = false; return; }
       toast('Marked no-show'); loadQueue();
     }));
+  }
+
+  /* ====================== RECEPTION: intake desk ====================== */
+  async function loadReception() {
+    if (!currentSession) return;
+    $('rc-session').textContent = `${formatDate(currentSession.session_date)} · ${currentSession.session.toUpperCase()}`;
+
+    // stats — only the three the receptionist needs
+    const statsEl = $('rc-stats');
+    const { data: st } = await sb.rpc('doctor_stats');
+    if (st) {
+      const chip = (label, val) => `<div class="stat-chip"><div class="v">${val}</div><div class="l">${label}</div></div>`;
+      statsEl.style.gridTemplateColumns = 'repeat(3, 1fr)';
+      statsEl.innerHTML = chip('🎟 Issued (session)', st.issued) + chip('⏳ Waiting', st.waiting) + chip('✅ Seen (session)', st.attended_session);
+    }
+
+    const list = $('rc-list');
+    const { data: raw, error } = await sb.rpc('session_queue');
+    if (error) { list.innerHTML = `<div class="empty">Error: ${escapeHtml(error.message)}</div>`; return; }
+    const rows = (raw || []).filter(r => r.status === 'waiting' || r.status === 'attending')
+      .sort((a, b) => a.token_number - b.token_number);
+    if (!rows.length) { list.innerHTML = '<div class="empty">No patients waiting.</div>'; return; }
+
+    list.innerHTML = rows.map(r => {
+      const pill = r.status === 'attending'
+        ? '<span class="pill attending">serving</span>'
+        : `<span class="pill ${r.source}">${escapeHtml(r.source)}</span>`;
+      const num = (x) => (x === null || x === undefined) ? '' : x;
+      return `
+      <div class="rc-card ${r.status === 'attending' ? 'attending' : ''}" data-id="${r.id}">
+        <div class="rc-top"><span class="rc-tok">#${r.token_number}</span>${pill}</div>
+        <div class="rc-grid">
+          <div class="full"><label>Name</label><input class="rc-name" value="${escapeHtml(r.name || '')}"></div>
+          <div><label>Phone</label><input class="rc-phone" type="tel" inputmode="numeric" maxlength="10" value="${escapeHtml(r.phone || '')}"></div>
+          <div><label>Weight (kg)</label><input class="rc-weight" type="number" step="0.1" min="0" placeholder="e.g. 12" value="${escapeHtml(r.weight || '')}"></div>
+          <div class="full"><label>Age (Years / Months / Days)</label>
+            <div class="rc-age">
+              <input class="rc-y" type="number" min="0" placeholder="Y" value="${num(r.age_years)}">
+              <input class="rc-m" type="number" min="0" placeholder="M" value="${num(r.age_months)}">
+              <input class="rc-d" type="number" min="0" placeholder="D" value="${num(r.age_days)}">
+            </div>
+          </div>
+          <div class="full"><label>Residence</label><div class="rc-res">${escapeHtml(r.residence || '—')}</div></div>
+        </div>
+        <div class="rc-actions"><button class="rc-save">Save</button></div>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('.rc-card').forEach(card => {
+      card.querySelector('.rc-save').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const intOrNull = (sel) => { const t = card.querySelector(sel).value.trim(); return t === '' ? null : parseInt(t, 10); };
+        const txtOrNull = (sel) => { const t = card.querySelector(sel).value.trim(); return t === '' ? null : t; };
+        btn.disabled = true; btn.textContent = 'Saving…';
+        const { error } = await sb.rpc('reception_update', {
+          p_visit_id:   card.dataset.id,
+          p_name:       txtOrNull('.rc-name'),
+          p_phone:      txtOrNull('.rc-phone'),
+          p_age_years:  intOrNull('.rc-y'),
+          p_age_months: intOrNull('.rc-m'),
+          p_age_days:   intOrNull('.rc-d'),
+          p_weight:     txtOrNull('.rc-weight'),
+        });
+        if (error) { toast('Failed: ' + error.message, '#ef4444'); btn.disabled = false; btn.textContent = 'Save'; return; }
+        toast('Saved'); btn.textContent = 'Saved ✓';
+        setTimeout(loadReception, 700);
+      });
+    });
   }
 
   async function selectVisit(id, data) {
@@ -743,7 +846,7 @@
             </div>
             <div style="font-size:11px; color:var(--muted); margin-top:3px;">Years · Months · Days</div>
           </div>
-          <div><label>Weight (kg)</label><input id="dq-weight" type="number" step="0.1" min="0" placeholder="e.g. 12" value="${isEdit && rx.weight ? escapeHtml(rx.weight) : ''}"></div>
+          <div><label>Weight (kg)</label><input id="dq-weight" type="number" step="0.1" min="0" placeholder="e.g. 12" value="${(isEdit && rx.weight) ? escapeHtml(rx.weight) : escapeHtml(v.weight || '')}"></div>
         </div>
         <div class="grid-2" style="margin-top:12px;">
           <div><label>Gender</label>
