@@ -400,15 +400,19 @@
     </div>
   </section>
 
-  <!-- RECEPTION PANEL — intake desk: stats + editable queue -->
+  <!-- RECEPTION PANEL — intake desk: stats + queue (click a name to edit) -->
   <section id="panel-reception" class="panel">
     <div id="rc-stats" class="stat-strip"></div>
-    <div class="rx-list-head">
-      <strong style="color:var(--teal-dark)">Patients in queue</strong>
-      <span class="sess" id="rc-session">—</span>
+    <div class="pharm-layout">
+      <div class="rx-list">
+        <div class="rx-list-head">
+          <strong style="color:var(--teal-dark)">Patients in queue</strong>
+          <span class="sess" id="rc-session">—</span>
+        </div>
+        <div id="rc-list"><div class="empty">Loading…</div></div>
+      </div>
+      <div id="rc-detail"><div class="card"><div class="empty">Select a patient from the queue to view and edit their details.</div></div></div>
     </div>
-    <p class="rc-hint">Tap a field to correct it, then <b>Save</b>. Changes go straight to the doctor's queue.</p>
-    <div id="rc-list"><div class="empty">Loading…</div></div>
   </section>
 
   <!-- PHARMACIST PANEL — prescriptions from the database -->
@@ -715,6 +719,9 @@
   }
 
   /* ====================== RECEPTION: intake desk ====================== */
+  let rcSelectedId = null;
+  let rcRows = [];
+
   async function loadReception() {
     if (!currentSession) return;
     $('rc-session').textContent = `${formatDate(currentSession.session_date)} · ${currentSession.session.toUpperCase()}`;
@@ -731,18 +738,57 @@
     const list = $('rc-list');
     const { data: raw, error } = await sb.rpc('session_queue');
     if (error) { list.innerHTML = `<div class="empty">Error: ${escapeHtml(error.message)}</div>`; return; }
-    const rows = (raw || []).filter(r => r.status === 'waiting' || r.status === 'attending')
+    rcRows = (raw || []).filter(r => r.status === 'waiting' || r.status === 'attending')
       .sort((a, b) => a.token_number - b.token_number);
-    if (!rows.length) { list.innerHTML = '<div class="empty">No patients waiting.</div>'; return; }
+    if (!rcRows.length) {
+      list.innerHTML = '<div class="empty">No patients waiting.</div>';
+      rcSelectedId = null;
+      $('rc-detail').innerHTML = '<div class="card"><div class="empty">No patients waiting.</div></div>';
+      return;
+    }
 
-    list.innerHTML = rows.map(r => {
+    list.innerHTML = rcRows.map(r => {
       const pill = r.status === 'attending'
         ? '<span class="pill attending">serving</span>'
         : `<span class="pill ${r.source}">${escapeHtml(r.source)}</span>`;
-      const num = (x) => (x === null || x === undefined) ? '' : x;
       return `
+      <div class="rx-item ${r.id === rcSelectedId ? 'selected' : ''}" data-id="${r.id}">
+        <div class="tok">#${r.token_number}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="name">${escapeHtml(r.name || '—')}</div>
+          <div class="meta">📞 ${escapeHtml(r.phone || '—')}</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">${pill}</div>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.rx-item').forEach(it => it.addEventListener('click', () => selectReception(it.dataset.id)));
+
+    // refresh the open patient's detail with the latest saved values.
+    if (rcSelectedId && rcRows.some(r => r.id === rcSelectedId)) {
+      renderReceptionDetail(rcRows.find(r => r.id === rcSelectedId));
+    } else if (rcSelectedId) {
+      rcSelectedId = null;
+      $('rc-detail').innerHTML = '<div class="card"><div class="empty">Select a patient from the queue to view and edit their details.</div></div>';
+    }
+  }
+
+  function selectReception(id) {
+    rcSelectedId = id;
+    document.querySelectorAll('#rc-list .rx-item').forEach(it => it.classList.toggle('selected', it.dataset.id === id));
+    renderReceptionDetail(rcRows.find(r => r.id === id));
+  }
+
+  function renderReceptionDetail(r) {
+    const detail = $('rc-detail');
+    if (!r) { detail.innerHTML = '<div class="card"><div class="empty">Patient no longer in the queue.</div></div>'; return; }
+    const num = (x) => (x === null || x === undefined) ? '' : x;
+    const pill = r.status === 'attending'
+      ? '<span class="pill attending">serving</span>'
+      : `<span class="pill ${r.source}">${escapeHtml(r.source)}</span>`;
+    detail.innerHTML = `
       <div class="rc-card ${r.status === 'attending' ? 'attending' : ''}" data-id="${r.id}">
         <div class="rc-top"><span class="rc-tok">#${r.token_number}</span>${pill}</div>
+        <p class="rc-hint">Correct any field, then <b>Save</b>. Changes go straight to the doctor's queue.</p>
         <div class="rc-grid">
           <div class="full"><label>Name</label><input class="rc-name" value="${escapeHtml(r.name || '')}"></div>
           <div><label>Phone</label><input class="rc-phone" type="tel" inputmode="numeric" maxlength="10" value="${escapeHtml(r.phone || '')}"></div>
@@ -759,28 +805,26 @@
         </div>
         <div class="rc-actions"><button class="rc-save">Save</button></div>
       </div>`;
-    }).join('');
 
-    list.querySelectorAll('.rc-card').forEach(card => {
-      card.querySelector('.rc-save').addEventListener('click', async (e) => {
-        const btn = e.currentTarget;
-        const intOrNull = (sel) => { const t = card.querySelector(sel).value.trim(); return t === '' ? null : parseInt(t, 10); };
-        const txtOrNull = (sel) => { const t = card.querySelector(sel).value.trim(); return t === '' ? null : t; };
-        btn.disabled = true; btn.textContent = 'Saving…';
-        const { error } = await sb.rpc('reception_update', {
-          p_visit_id:   card.dataset.id,
-          p_name:       txtOrNull('.rc-name'),
-          p_phone:      txtOrNull('.rc-phone'),
-          p_age_years:  intOrNull('.rc-y'),
-          p_age_months: intOrNull('.rc-m'),
-          p_age_days:   intOrNull('.rc-d'),
-          p_weight:     txtOrNull('.rc-weight'),
-          p_temperature: txtOrNull('.rc-temp'),
-        });
-        if (error) { toast('Failed: ' + error.message, '#ef4444'); btn.disabled = false; btn.textContent = 'Save'; return; }
-        toast('Saved'); btn.textContent = 'Saved ✓';
-        setTimeout(loadReception, 700);
+    const card = detail.querySelector('.rc-card');
+    card.querySelector('.rc-save').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const intOrNull = (sel) => { const t = card.querySelector(sel).value.trim(); return t === '' ? null : parseInt(t, 10); };
+      const txtOrNull = (sel) => { const t = card.querySelector(sel).value.trim(); return t === '' ? null : t; };
+      btn.disabled = true; btn.textContent = 'Saving…';
+      const { error } = await sb.rpc('reception_update', {
+        p_visit_id:    card.dataset.id,
+        p_name:        txtOrNull('.rc-name'),
+        p_phone:       txtOrNull('.rc-phone'),
+        p_age_years:   intOrNull('.rc-y'),
+        p_age_months:  intOrNull('.rc-m'),
+        p_age_days:    intOrNull('.rc-d'),
+        p_weight:      txtOrNull('.rc-weight'),
+        p_temperature: txtOrNull('.rc-temp'),
       });
+      if (error) { toast('Failed: ' + error.message, '#ef4444'); btn.disabled = false; btn.textContent = 'Save'; return; }
+      toast('Saved'); btn.textContent = 'Saved ✓';
+      setTimeout(loadReception, 700);
     });
   }
 
