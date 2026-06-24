@@ -1411,7 +1411,7 @@
       id: r.id, created_at: r.created_at, doctor_name: r.doctor_name, notes: r.notes,
       medicines: r.medicines || [], complaint: r.complaint, examination: r.examination || {},
       diagnosis: r.diagnosis, lab_advice: r.lab_advice, temperature: r.temperature,
-      weight: r.weight, followups: r.followups || [], is_followup: r.is_followup,
+      weight: r.weight, followups: r.followups || [], is_followup: r.is_followup, rx_released_at: r.rx_released_at,
       patients: { name: r.patient_name, phone: r.phone, age_years: r.age_years, age_months: r.age_months, age_days: r.age_days, gender: r.gender, residence: r.residence },
       visits: { token_number: r.token_number },
     }));
@@ -1534,8 +1534,21 @@
         <button class="secondary" id="print-btn">🖨 Print</button>
         ${followups.length ? '<button class="secondary" id="print-fu-btn" title="Re-feed the original prescription — only the follow-up part prints onto the blank area">🖨 Print follow-up only</button>' : ''}
         <button class="primary" id="csv-btn">Save for ERP (CSV)</button>
+        <button class="${rx.rx_released_at ? 'secondary' : 'primary'}" id="send-patient-btn" style="${rx.rx_released_at ? '' : 'background:#7c3aed;'}">${rx.rx_released_at ? '✓ Sent to patient — tap to unsend' : '📲 Send to patient'}</button>
       </div>
       <div id="print-area">${rxSheetHtml(rx)}</div>`;
+    const sp = $('send-patient-btn');
+    if (sp) sp.addEventListener('click', async () => {
+      const turnOn = !rx.rx_released_at;
+      if (turnOn && !confirm("Send this prescription to the patient's booking screen?\nThey'll be able to view and download it on their phone.")) return;
+      sp.disabled = true;
+      const { data, error } = await sb.rpc('release_prescription', { p_rx_id: rx.id, p_on: turnOn });
+      sp.disabled = false;
+      if (error) { toast('Failed: ' + (error.message || error), '#ef4444'); return; }
+      rx.rx_released_at = turnOn ? ((data && data.released_at) || new Date().toISOString()) : null;
+      toast(turnOn ? '📲 Sent — it now shows on the patient’s booking screen' : 'Unsent', turnOn ? '#7c3aed' : '#64748b');
+      loadPrescriptions();
+    });
     const pb = $('print-btn'); if (pb) pb.addEventListener('click', () => window.print());
     const fpb = $('print-fu-btn'); if (fpb) fpb.addEventListener('click', () => {
       // Print ONLY the follow-up block, at its natural position, so it lands on

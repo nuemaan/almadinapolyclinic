@@ -19,6 +19,7 @@ const states = {
   loading: $('state-loading'),
   ticket:  $('state-ticket'),
   error:   $('state-error'),
+  rx:      $('state-rx'),
 };
 function show(name) { Object.entries(states).forEach(([k, el]) => el && el.classList.toggle('hidden', k !== name)); }
 
@@ -28,6 +29,7 @@ const isWalkin = !!qrToken;
 let currentSession = null;  // {session_date, session} from the server
 let statusTimer = null;
 let addingMore = false;
+let rxShownKey = null;      // guards re-rendering the released-prescription view
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function ordinal(n) { const s = ['th','st','nd','rd'], v = n % 100; return n + (s[(v-20)%10] || s[v] || s[0]); }
@@ -146,6 +148,18 @@ async function refreshStatus() {
       if (!error && data) results.push({ token: p.token, s: data });
     }
     if (!results.length) return;
+
+    // Has the clinic sent any prescription to THIS device? If so, replace the
+    // ticket with the prescription view. Gated by the per-visit secret claim_code.
+    const released = [];
+    for (const p of current) {
+      if (!p.claim_code) continue;
+      const r = results.find(x => x.token === p.token);
+      if (!r || r.s.your_status !== 'done') continue;
+      try { const { data: rx } = await sb.rpc('claim_prescription', { p_claim_code: p.claim_code }); if (rx) released.push(rx); } catch {}
+    }
+    if (released.length) { showRxView(released); return; }
+
     const first = results[0].s;
     // session-level cells (same for everyone)
     $('ts-attended').textContent = first.attended ?? 0;
@@ -186,6 +200,67 @@ function paintEta(s) {
   else if ((s.ahead ?? 0) === 0 && sessionStarted(s)) { lbl.textContent = '⏳ Your turn (approx.)'; el.textContent = "You're next!"; }
   else if ((s.ahead ?? 0) === 0) { lbl.textContent = '⏳ Your turn (approx.)'; el.textContent = hhmm(turnTime(s)); }
   else { lbl.textContent = `⏳ ${s.ahead} ahead · turn approx.`; el.textContent = hhmm(turnTime(s)); }
+}
+
+// ---- released prescription (sent by the clinic) ----
+function buildRxHtml(rx) {
+  const ageBits = [];
+  if (rx.age_years)  ageBits.push(rx.age_years + 'y');
+  if (rx.age_months) ageBits.push(rx.age_months + 'm');
+  if (rx.age_days)   ageBits.push(rx.age_days + 'd');
+  const age = ageBits.join(' ');
+  const date = rx.created_at ? new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const exam = rx.examination || {};
+  const examLines = [['General condition', exam.general], ['Chest', exam.chest], ['Abdomen', exam.abdomen], ['CVS', exam.cvs], ['Other', exam.other]].filter(x => x[1]);
+  const meds = Array.isArray(rx.medicines) ? rx.medicines : [];
+  const fus = Array.isArray(rx.followups) ? rx.followups : [];
+  const medLine = (m) => {
+    const dose = [m.dosage, m.unit].filter(Boolean).join(' ');
+    return `<li>${esc((m.type ? m.type + ' ' : '') + (m.name || ''))}${dose ? ' — ' + esc(dose) : ''}${m.frequency ? ' · ' + esc(m.frequency) : ''}</li>`;
+  };
+  return `<div class="rxdoc">
+    <div class="rxdoc-head">
+      <div class="rxdoc-clinic">AL-MADINA POLYCLINIC &amp; LABORATORIES</div>
+      <div class="rxdoc-addr">1st Floor, Al-Rahat Chinar Shopping Complex, Beehama, Ganderbal</div>
+      <div class="rxdoc-contact">📞 +91 95965 79443 · 🌐 almadinapolyclinic.com</div>
+    </div>
+    <div class="rxdoc-meta"><span><b>Seen by:</b> ${esc(rx.doctor_name || '')}</span><span><b>Date:</b> ${date}</span></div>
+    <div class="rxdoc-patient">
+      <span><b>Name:</b> ${esc(rx.name || '')}</span>
+      ${age ? `<span><b>Age:</b> ${esc(age)}${rx.gender ? ' / ' + esc(rx.gender) : ''}</span>` : ''}
+      ${rx.weight ? `<span><b>Weight:</b> ${esc(rx.weight)} kg</span>` : ''}
+      ${rx.height ? `<span><b>Height:</b> ${esc(rx.height)} cm</span>` : ''}
+      ${rx.residence ? `<span><b>R/o:</b> ${esc(rx.residence)}</span>` : ''}
+    </div>
+    <div class="rxdoc-body">
+      ${rx.complaint ? `<p><b>Complaint:</b> ${esc(rx.complaint)}</p>` : ''}
+      ${rx.temperature ? `<p><b>Temperature:</b> ${esc(rx.temperature)} °F</p>` : ''}
+      ${examLines.length ? `<p><b>On Examination:</b></p><ul class="rxdoc-ex">${examLines.map(([k, v]) => `<li>${esc(k)}: ${esc(v)}</li>`).join('')}</ul>` : ''}
+      ${rx.diagnosis ? `<p><b>Diagnosis:</b> ${esc(rx.diagnosis)}</p>` : ''}
+      ${rx.lab_advice ? `<p><b>Investigations:</b> ${esc(rx.lab_advice)}</p>` : ''}
+      <div class="rxdoc-rx">℞</div>
+      ${meds.length ? `<ol class="rxdoc-meds">${meds.map(medLine).join('')}</ol>` : '<p class="rxdoc-none">No medicines prescribed.</p>'}
+      ${fus.length ? `<div class="rxdoc-fu"><b>Follow-up notes:</b>${fus.map(f => {
+        const parts = [];
+        if (f.complaint)     parts.push('Complaint: ' + esc(f.complaint));
+        if (f.examination)   parts.push('Exam: ' + esc(f.examination));
+        if (f.treatment)     parts.push('Treatment: ' + esc(f.treatment));
+        if (f.investigation) parts.push('Ix: ' + esc(f.investigation));
+        if (f.note)          parts.push(esc(f.note));
+        return `<div class="rxdoc-fu-row"><b>${esc(f.date || '')}</b> ${parts.join(' · ')}</div>`;
+      }).join('')}</div>` : ''}
+    </div>
+    <div class="rxdoc-foot">Digital copy of your prescription · Al Madina Polyclinic, Beehama</div>
+  </div>`;
+}
+function showRxView(list) {
+  const key = list.map(r => r.token_number + ':' + r.released_at).join('|');
+  if (rxShownKey === key && !states.rx.classList.contains('hidden')) return;  // already shown
+  rxShownKey = key;
+  clearInterval(statusTimer);
+  $('rx-sheets').innerHTML = list.map(buildRxHtml).join('');
+  const dl = $('rx-download-btn'); if (dl) dl.onclick = () => window.print();
+  show('rx');
 }
 
 // ---- networking ----
@@ -255,7 +330,7 @@ async function submitForm() {
     const res = await bookOne(name, phone, loc, { y: ageY, m: ageM, d: ageD }, residence);
     const saved = pruneSaved();
     const patients = (addingMore && saved ? saved.patients : []).concat([
-      { token: res.token_number, name, source: res.source, session_date: res.session_date, session: res.session, headline: res.headline, message: res.message },
+      { token: res.token_number, name, source: res.source, session_date: res.session_date, session: res.session, headline: res.headline, message: res.message, claim_code: res.claim_code },
     ]);
     save(patients, phone);
     await ensureSession();
