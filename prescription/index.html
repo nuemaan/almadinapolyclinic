@@ -519,6 +519,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../supabase-config.js?v=2"></script>
+<script src="growth-data.js?v=1"></script>
 <script>
   const sb = window.supabaseClient;
   const $ = (id) => document.getElementById(id);
@@ -721,7 +722,7 @@
     const list = $('dq-list');
     if (error) { list.innerHTML = `<div class="empty">Error: ${escapeHtml(error.message)}</div>`; return; }
     const data = (raw || []).map(r => ({
-      id: r.id, token_number: r.token_number, source: r.source, status: r.status, is_followup: r.is_followup, weight: r.weight, temperature: r.temperature,
+      id: r.id, token_number: r.token_number, source: r.source, status: r.status, is_followup: r.is_followup, weight: r.weight, temperature: r.temperature, height: r.height,
       patients: { id: r.patient_id, name: r.name, phone: r.phone, age_years: r.age_years, age_months: r.age_months, age_days: r.age_days, gender: r.gender, residence: r.residence, last_dewormed_on: r.last_dewormed_on },
     }));
     if (!data.length) { list.innerHTML = '<div class="empty">No patients waiting.</div>'; return; }
@@ -837,6 +838,7 @@
           <div class="full"><label>Name</label><input class="rc-name" value="${escapeHtml(r.name || '')}"></div>
           <div><label>Phone</label><input class="rc-phone" type="tel" inputmode="numeric" maxlength="10" value="${escapeHtml(r.phone || '')}"></div>
           <div><label>Weight (kg)</label><input class="rc-weight" type="number" step="0.1" min="0" placeholder="e.g. 12" value="${escapeHtml(r.weight || '')}"></div>
+          <div><label>Height (cm)</label><input class="rc-height" type="number" step="0.1" min="0" placeholder="e.g. 95" value="${escapeHtml(r.height || '')}"></div>
           <div><label>Temperature (°F)</label><input class="rc-temp" type="number" step="0.1" inputmode="decimal" min="80" max="115" placeholder="e.g. 100.4" value="${escapeHtml(r.temperature || '')}"></div>
           <div class="full"><label>Age (Years / Months / Days)</label>
             <div class="rc-age">
@@ -865,6 +867,7 @@
         p_age_days:    intOrNull('.rc-d'),
         p_weight:      txtOrNull('.rc-weight'),
         p_temperature: txtOrNull('.rc-temp'),
+        p_height:      txtOrNull('.rc-height'),
       });
       if (error) { toast('Failed: ' + error.message, '#ef4444'); btn.disabled = false; btn.textContent = 'Save'; return; }
       toast('Saved'); btn.textContent = 'Saved ✓';
@@ -937,6 +940,7 @@
             <div style="font-size:11px; color:var(--muted); margin-top:3px;">Years · Months · Days</div>
           </div>
           <div><label>Weight (kg)</label><input id="dq-weight" type="number" step="0.1" min="0" placeholder="e.g. 12" value="${(isEdit && rx.weight) ? escapeHtml(rx.weight) : escapeHtml(v.weight || '')}"></div>
+          <div><label>Height (cm)</label><input id="dq-height" type="number" step="0.1" min="0" placeholder="e.g. 95" value="${escapeHtml(v.height || '')}"></div>
         </div>
         <div class="grid-2" style="margin-top:12px;">
           <div><label>Gender</label>
@@ -959,6 +963,7 @@
           </label>
           <div id="deworm-last" style="font-size:12px; color:var(--muted); margin-top:5px;"></div>
         </div>
+        <div id="growth-box" style="display:none; margin-top:14px; padding-top:14px; border-top:1px solid #eef2f2;"></div>
       </div>
 
       <div class="card" id="hist-exam-card">
@@ -1081,6 +1086,50 @@
       update();
       const ageEl = $('dq-age-y'); if (ageEl) ageEl.addEventListener('input', update);
     })();
+
+    // Growth check (WHO z-scores) — live banner from age, sex, weight & height.
+    (function setupGrowth() {
+      const box = $('growth-box'); if (!box) return;
+      const TONE = {
+        ok:   { bg: '#ecfdf5', bd: '#a7f3d0', fg: '#065f46', dot: '#10b981' },
+        warn: { bg: '#fffbeb', bd: '#fde68a', fg: '#92400e', dot: '#f59e0b' },
+        bad:  { bg: '#fef2f2', bd: '#fecaca', fg: '#991b1b', dot: '#ef4444' },
+      };
+      const numOr = (id) => { const el = $(id); const t = el ? el.value.trim() : ''; return t === '' ? null : parseFloat(t); };
+      function update() {
+        const y = parseInt(($('dq-age-y') || {}).value, 10) || 0;
+        const mo = parseInt(($('dq-age-m') || {}).value, 10) || 0;
+        const d = parseInt(($('dq-age-d') || {}).value, 10) || 0;
+        const ageMonths = y * 12 + mo + d / 30.4375;
+        const g = ($('dq-gender') || {}).value;
+        const sex = g === 'Male' ? 1 : g === 'Female' ? 2 : null;
+        const res = computeGrowth(sex, ageMonths, numOr('dq-weight'), numOr('dq-height'));
+        if (!res) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        box.style.display = '';
+        const head = TONE[res.worst];
+        const title = res.worst === 'ok' ? '✅ Growth: normal' : '⚠️ Growth: needs review';
+        const bmiNote = res.bmi ? ` · BMI ${res.bmi.toFixed(1)}` : '';
+        box.innerHTML =
+          `<div style="background:${head.bg}; border:1px solid ${head.bd}; color:${head.fg}; border-radius:10px; padding:10px 12px;">
+            <div style="font-weight:800; font-size:13.5px; margin-bottom:6px;">${title}<span style="font-weight:600;">${bmiNote}</span></div>` +
+          res.rows.map(r => {
+            const t = TONE[r.tone];
+            return `<div style="display:flex; align-items:center; gap:8px; font-size:13px; padding:2px 0;">
+              <span style="width:8px;height:8px;border-radius:50%;background:${t.dot};flex:0 0 auto;"></span>
+              <span style="flex:1;">${r.name}: <b>${escapeHtml(r.label)}</b></span>
+              <span style="font-variant-numeric:tabular-nums; color:${t.fg};">z ${fmtZ(r.z)}</span>
+            </div>`;
+          }).join('') +
+          `<div style="font-size:11px; opacity:.8; margin-top:6px;">WHO standards · for the doctor to review</div>
+          </div>`;
+      }
+      update();
+      ['dq-weight', 'dq-height', 'dq-age-y', 'dq-age-m', 'dq-age-d', 'dq-gender'].forEach(id => {
+        const el = $(id); if (el) el.addEventListener('input', update);
+        if (el && el.tagName === 'SELECT') el.addEventListener('change', update);
+      });
+    })();
+
     // Follow-up card (returning patient) — appends a dated note to the last
     // prescription. Shown when the patient (by record, or by a corrected name
     // that matches an existing record on this phone) has a Rx in the last 14 days.
@@ -1226,6 +1275,7 @@
       p_complaint: $('dq-complaint').value.trim() || null,
       p_temperature: $('dq-temp') && $('dq-temp').value.trim() ? $('dq-temp').value.trim() : null,
       p_weight: $('dq-weight') && $('dq-weight').value.trim() ? $('dq-weight').value.trim() : null,
+      p_height: $('dq-height') && $('dq-height').value.trim() ? $('dq-height').value.trim() : null,
       p_name: $('dq-name') && $('dq-name').value.trim() ? $('dq-name').value.trim() : null,
       p_phone: $('dq-phone') && /^\d{10}$/.test($('dq-phone').value.trim()) ? $('dq-phone').value.trim() : null,
       p_examination: examination,
@@ -1571,6 +1621,69 @@
     }).join('');
     $('rx-search-clear').addEventListener('click', () => { out.innerHTML = ''; $('rx-search-input').value = ''; });
     out.querySelectorAll('.rx-result').forEach(it => it.addEventListener('click', () => openFullPrescriptions(it.dataset.id, it.dataset.name)));
+  }
+
+  /* ============ Growth assessment — WHO Child Growth Standards (z-scores) ============ */
+  // Reference LMS tables: window.WHO_GROWTH (see growth-data.js). z computed by the
+  // LMS method with the WHO tail-correction for |z|>3. Doctor reviews every result.
+  const WHO = window.WHO_GROWTH || null;
+  function lmsZ(y, L, M, S) {
+    let z = Math.abs(L) < 1e-7 ? Math.log(y / M) / S : (Math.pow(y / M, L) - 1) / (L * S);
+    if (z > 3)  { const s3 = M*Math.pow(1+L*S*3,1/L),  s2 = M*Math.pow(1+L*S*2,1/L);  z = 3  + (y - s3) / (s3 - s2); }
+    else if (z < -3) { const s3 = M*Math.pow(1+L*S*-3,1/L), s2 = M*Math.pow(1+L*S*-2,1/L); z = -3 + (y - s3) / (s2 - s3); }
+    return z;
+  }
+  function whoZ(ind, sex, ageMonths, y) {
+    if (!WHO || !WHO[ind] || !WHO[ind][sex] || !(y > 0)) return null;
+    const t = WHO[ind][sex], maxM = t.start + t.M.length - 1;
+    if (ageMonths < t.start || ageMonths > maxM) return null;
+    const lo = Math.floor(ageMonths), hi = Math.ceil(ageMonths), f = ageMonths - lo;
+    const i0 = lo - t.start, i1 = hi - t.start;
+    const ip = (a) => a[i0] + (a[i1] - a[i0]) * f;
+    return lmsZ(y, ip(t.L), ip(t.M), ip(t.S));
+  }
+  const fmtZ = (z) => (z >= 0 ? '+' : '') + z.toFixed(1);
+  function classWFA(z) {
+    if (z < -3) return ['Severely underweight', 'bad'];
+    if (z < -2) return ['Underweight', 'warn'];
+    if (z >  2) return ['High weight-for-age', 'warn'];
+    return ['Normal weight-for-age', 'ok'];
+  }
+  function classHFA(z) {
+    if (z < -3) return ['Severely stunted', 'bad'];
+    if (z < -2) return ['Stunted (low height-for-age)', 'warn'];
+    if (z >  3) return ['Unusually tall — review', 'warn'];
+    return ['Normal height-for-age', 'ok'];
+  }
+  function classBFA(z, under5) {
+    if (z < -3) return [under5 ? 'Severely wasted' : 'Severe thinness', 'bad'];
+    if (z < -2) return [under5 ? 'Wasted (low BMI)' : 'Thinness', 'warn'];
+    if (under5) { if (z > 3) return ['Obese', 'bad']; if (z > 2) return ['Overweight', 'warn']; if (z > 1) return ['Risk of overweight', 'warn']; }
+    else        { if (z > 2) return ['Obese', 'bad']; if (z > 1) return ['Overweight', 'warn']; }
+    return ['Normal BMI-for-age', 'ok'];
+  }
+  // Returns { rows:[{name,z,label,tone}], bmi, worst } or null when not assessable.
+  function computeGrowth(sex, ageMonths, weightKg, heightCm) {
+    if (!sex || !(ageMonths >= 0) || ageMonths > 228) return null;   // WHO covers 0–19y
+    const under5 = ageMonths < 60;
+    const rows = [];
+    if (weightKg > 0 && ageMonths <= 120) {
+      const z = whoZ('wfa', sex, ageMonths, weightKg);
+      if (z != null) { const [label, tone] = classWFA(z); rows.push({ name: 'Weight-for-age', z, label, tone }); }
+    }
+    if (heightCm > 0) {
+      const z = whoZ('hfa', sex, ageMonths, heightCm);
+      if (z != null) { const [label, tone] = classHFA(z); rows.push({ name: 'Height-for-age', z, label, tone }); }
+    }
+    let bmi = null;
+    if (weightKg > 0 && heightCm > 0) {
+      bmi = weightKg / Math.pow(heightCm / 100, 2);
+      const z = whoZ('bfa', sex, ageMonths, bmi);
+      if (z != null) { const [label, tone] = classBFA(z, under5); rows.push({ name: 'BMI-for-age', z, label, tone }); }
+    }
+    if (!rows.length) return null;
+    const worst = rows.some(r => r.tone === 'bad') ? 'bad' : rows.some(r => r.tone === 'warn') ? 'warn' : 'ok';
+    return { rows, bmi, worst };
   }
 
   /* ====================== LAB (Supabase Storage + lab_tests) ====================== */
