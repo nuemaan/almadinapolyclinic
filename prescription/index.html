@@ -673,7 +673,7 @@
     const list = $('dq-list');
     if (error) { list.innerHTML = `<div class="empty">Error: ${escapeHtml(error.message)}</div>`; return; }
     const data = (raw || []).map(r => ({
-      id: r.id, token_number: r.token_number, source: r.source, status: r.status, is_followup: r.is_followup, weight: r.weight,
+      id: r.id, token_number: r.token_number, source: r.source, status: r.status, is_followup: r.is_followup, weight: r.weight, temperature: r.temperature,
       patients: { id: r.patient_id, name: r.name, phone: r.phone, age_years: r.age_years, age_months: r.age_months, age_days: r.age_days, gender: r.gender, residence: r.residence },
     }));
     if (!data.length) { list.innerHTML = '<div class="empty">No patients waiting.</div>'; return; }
@@ -747,6 +747,7 @@
           <div class="full"><label>Name</label><input class="rc-name" value="${escapeHtml(r.name || '')}"></div>
           <div><label>Phone</label><input class="rc-phone" type="tel" inputmode="numeric" maxlength="10" value="${escapeHtml(r.phone || '')}"></div>
           <div><label>Weight (kg)</label><input class="rc-weight" type="number" step="0.1" min="0" placeholder="e.g. 12" value="${escapeHtml(r.weight || '')}"></div>
+          <div><label>Temperature (°F)</label><input class="rc-temp" type="number" step="0.1" inputmode="decimal" min="80" max="115" placeholder="e.g. 100.4" value="${escapeHtml(r.temperature || '')}"></div>
           <div class="full"><label>Age (Years / Months / Days)</label>
             <div class="rc-age">
               <input class="rc-y" type="number" min="0" placeholder="Y" value="${num(r.age_years)}">
@@ -774,6 +775,7 @@
           p_age_months: intOrNull('.rc-m'),
           p_age_days:   intOrNull('.rc-d'),
           p_weight:     txtOrNull('.rc-weight'),
+          p_temperature: txtOrNull('.rc-temp'),
         });
         if (error) { toast('Failed: ' + error.message, '#ef4444'); btn.disabled = false; btn.textContent = 'Save'; return; }
         toast('Saved'); btn.textContent = 'Saved ✓';
@@ -867,7 +869,7 @@
       <div class="card" id="hist-exam-card">
         <h2>History &amp; Examination</h2>
         <div><label>Complaint</label><textarea id="dq-complaint" placeholder="Presenting complaint…"></textarea></div>
-        <div style="margin-top:12px; max-width:240px;"><label>Temperature (°F)</label><input id="dq-temp" type="number" step="0.1" inputmode="decimal" min="80" max="115" placeholder="e.g. 100.4"></div>
+        <div style="margin-top:12px; max-width:240px;"><label>Temperature (°F)</label><input id="dq-temp" type="number" step="0.1" inputmode="decimal" min="80" max="115" placeholder="e.g. 100.4" value="${(isEdit && rx.temperature) ? escapeHtml(rx.temperature) : escapeHtml(v.temperature || '')}"></div>
         <div style="margin-top:14px; margin-bottom:8px; font-weight:800; font-size:12px; color:var(--teal-dark); text-transform:uppercase; letter-spacing:.04em;">Clinical Examination</div>
         <div class="grid-2">
           <div><label>General condition</label>${examSelect('dq-ex-general', EXAM.general)}</div>
