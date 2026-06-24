@@ -678,7 +678,7 @@
     if (error) { list.innerHTML = `<div class="empty">Error: ${escapeHtml(error.message)}</div>`; return; }
     const data = (raw || []).map(r => ({
       id: r.id, token_number: r.token_number, source: r.source, status: r.status, is_followup: r.is_followup, weight: r.weight, temperature: r.temperature,
-      patients: { id: r.patient_id, name: r.name, phone: r.phone, age_years: r.age_years, age_months: r.age_months, age_days: r.age_days, gender: r.gender, residence: r.residence },
+      patients: { id: r.patient_id, name: r.name, phone: r.phone, age_years: r.age_years, age_months: r.age_months, age_days: r.age_days, gender: r.gender, residence: r.residence, last_dewormed_on: r.last_dewormed_on },
     }));
     if (!data.length) { list.innerHTML = '<div class="empty">No patients waiting.</div>'; return; }
     // Seen patients sink to the bottom; waiting / serving / no-show keep token order.
@@ -908,6 +908,13 @@
             </select></div>
         </div>
         <div style="margin-top:12px;"><label>Residence (R/o) — entered by patient</label><input id="dq-residence" value="${escapeHtml(p.residence || '')}" placeholder="—" disabled></div>
+        <div id="deworm-row" style="display:none; margin-top:14px; padding-top:14px; border-top:1px solid #eef2f2;">
+          <div id="deworm-alert" style="display:none; background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:10px; padding:10px 12px; font-size:13.5px; font-weight:600; margin-bottom:10px;"></div>
+          <label style="display:flex; align-items:center; gap:9px; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:700; color:var(--ink);">
+            <input type="checkbox" id="dq-deworm" style="width:18px; height:18px; cursor:pointer;"> 💊 Deworming done today
+          </label>
+          <div id="deworm-last" style="font-size:12px; color:var(--muted); margin-top:5px;"></div>
+        </div>
       </div>
 
       <div class="card" id="hist-exam-card">
@@ -994,6 +1001,40 @@
     $('add-med-btn').addEventListener('click', () => $('med-rows').appendChild(makeMedRow()));
     $('save-rx-btn').addEventListener('click', () => saveConsult(v));
     if ($('ai-btn')) $('ai-btn').addEventListener('click', () => runAI(v));
+
+    // Deworming (age ≥ 2): a "done today" checkbox plus a 6-month recall alert.
+    (function setupDeworm() {
+      const row = $('deworm-row'); if (!row) return;
+      const last = p.last_dewormed_on || null;   // 'YYYY-MM-DD' or null
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      const cb = $('dq-deworm'), alertEl = $('deworm-alert'), lastEl = $('deworm-last');
+      if (last && last === todayStr) cb.checked = true;   // already done today
+      const monthsSince = (d) => {
+        const a = new Date(d + 'T00:00:00');
+        let m = (today.getFullYear() - a.getFullYear()) * 12 + (today.getMonth() - a.getMonth());
+        if (today.getDate() < a.getDate()) m--;
+        return Math.max(0, m);
+      };
+      function update() {
+        const ay = parseInt(($('dq-age-y') || {}).value, 10);
+        const eligible = Number.isFinite(ay) && ay >= 2;
+        row.style.display = eligible ? '' : 'none';
+        if (!eligible) return;
+        if (last) {
+          const m = monthsSince(last);
+          lastEl.textContent = `Last dewormed: ${formatDate(last)} (${m} month${m === 1 ? '' : 's'} ago).`;
+          const due = m >= 6 && last !== todayStr;
+          alertEl.style.display = due ? '' : 'none';
+          if (due) alertEl.textContent = `⚠️ Deworm alert — due for deworming (last done ${m} months ago).`;
+        } else {
+          lastEl.textContent = 'No deworming recorded yet.';
+          alertEl.style.display = 'none';
+        }
+      }
+      update();
+      const ageEl = $('dq-age-y'); if (ageEl) ageEl.addEventListener('input', update);
+    })();
     // Follow-up card (returning patient) — appends a dated note to the last
     // prescription. Shown when the patient (by record, or by a corrected name
     // that matches an existing record on this phone) has a Rx in the last 14 days.
@@ -1147,6 +1188,7 @@
     });
     $('save-rx-btn').disabled = false;
     if (error) { toast('Save failed: ' + error.message, '#ef4444'); return; }
+    if ($('dq-deworm') && $('dq-deworm').checked) { try { await sb.rpc('mark_dewormed', { p_visit_id: v.id }); } catch {} }
     selectedVisitId = null;
     $('dq-detail').innerHTML = '<div class="card"><div class="empty">Saved ✔ — select the next patient.</div></div>';
     loadQueue();
@@ -1169,6 +1211,7 @@
     });
     if (btn) btn.disabled = false;
     if (error) { toast('Failed: ' + (error.message || error), '#ef4444'); return; }
+    if ($('dq-deworm') && $('dq-deworm').checked) { try { await sb.rpc('mark_dewormed', { p_visit_id: v.id }); } catch {} }
     selectedVisitId = null;
     $('dq-detail').innerHTML = '<div class="card"><div class="empty">Follow-up added ✔ — it prints on the last prescription. Select the next patient.</div></div>';
     loadQueue();
