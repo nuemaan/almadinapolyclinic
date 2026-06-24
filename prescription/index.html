@@ -147,6 +147,27 @@
   .rc-save:disabled { opacity: .55; cursor: default; }
   @media (max-width: 460px) { .rc-grid { grid-template-columns: 1fr; } }
 
+  /* Prescription search + full-prescription modal */
+  .rx-search { display: flex; gap: 8px; margin-bottom: 14px; }
+  .rx-search input { flex: 1; padding: 11px 14px; border: 1px solid #d8e0e0; border-radius: 10px; font-size: 14px; }
+  .rx-search button { padding: 11px 20px; border: 0; border-radius: 10px; background: var(--teal); color: #fff; font-weight: 800; font-size: 14px; cursor: pointer; white-space: nowrap; }
+  .rx-search-results { margin-bottom: 14px; }
+  .rx-result { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #fff; border: 1px solid rgba(13,148,136,0.14); border-radius: 12px; margin-bottom: 8px; cursor: pointer; }
+  .rx-result:hover { border-color: var(--teal); background: var(--teal-bg); }
+  .rx-result .name { font-weight: 800; color: var(--ink); }
+  .rx-result .meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .rx-result .cnt { margin-left: auto; font-size: 12px; font-weight: 800; color: var(--teal-dark); background: var(--teal-bg); border-radius: 999px; padding: 5px 11px; white-space: nowrap; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 1000; display: none; align-items: flex-start; justify-content: center; padding: 24px 12px; overflow-y: auto; }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: #f1f5f5; border-radius: 16px; width: 100%; max-width: 860px; box-shadow: 0 24px 60px rgba(0,0,0,0.3); }
+  .modal-head { position: sticky; top: 0; display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--teal-dark); color: #fff; border-radius: 16px 16px 0 0; z-index: 1; }
+  .modal-head h3 { margin: 0; font-size: 16px; font-weight: 800; flex: 1; }
+  .modal-close { background: rgba(255,255,255,0.2); border: 0; color: #fff; width: 34px; height: 34px; border-radius: 9px; font-size: 18px; cursor: pointer; line-height: 1; }
+  .modal-body { padding: 18px; }
+  .modal-body .rxsheet { margin: 0 auto 18px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+  @media print { .modal-overlay.open { position: static; background: none; padding: 0; overflow: visible; } .modal-head, .no-print { display: none !important; } .modal-box { box-shadow: none; max-width: none; background: none; } }
+
   .sch-sess { border: 1px solid var(--teal-soft); background: var(--teal-bg); border-radius: 12px; padding: 14px; }
   .sch-toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: var(--teal-dark); text-transform: none; letter-spacing: 0; margin-bottom: 10px; }
   .sch-toggle input { width: auto; }
@@ -388,6 +409,11 @@
   <!-- DOCTOR PANEL — live queue + consult -->
   <section id="panel-doctor" class="panel active">
     <div id="dq-stats" class="stat-strip"></div>
+    <div class="rx-search">
+      <input id="rx-search-input" type="search" placeholder="🔍 Search any patient's prescriptions by name or phone…">
+      <button id="rx-search-btn">Search</button>
+    </div>
+    <div id="rx-search-results" class="rx-search-results"></div>
     <div class="pharm-layout">
       <div class="rx-list">
         <div class="rx-list-head">
@@ -476,6 +502,17 @@
   </section>
 
 </main>
+
+<!-- Full-prescription viewer (current patient or a search result) -->
+<div id="rx-modal" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-head no-print">
+      <h3 id="rx-modal-title">Prescriptions</h3>
+      <button class="modal-close" id="rx-modal-close" title="Close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" id="rx-modal-body"></div>
+  </div>
+</div>
 </div>
 
 <div class="toast" id="toast">Saved</div>
@@ -638,6 +675,13 @@
     if (tab === 'schedule') loadSchedule();
   }
   document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => activateTab(b.dataset.tab)));
+
+  /* prescription search + full-prescription modal (static elements) */
+  $('rx-search-btn').addEventListener('click', runRxSearch);
+  $('rx-search-input').addEventListener('keydown', e => { if (e.key === 'Enter') runRxSearch(); });
+  $('rx-modal-close').addEventListener('click', closeRxModal);
+  $('rx-modal').addEventListener('click', e => { if (e.target === $('rx-modal')) closeRxModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('rx-modal').classList.contains('open')) closeRxModal(); });
 
   /* ====================== DOCTOR: live queue ====================== */
   let selectedVisitId = null;
@@ -943,6 +987,7 @@
       <div class="card">
         <h2>Previous Visits</h2>
         <div class="hist" id="dq-history"><div class="empty">Loading history…</div></div>
+        <div class="actions" style="margin-top:12px;"><button class="secondary" id="view-full-rx-btn">📄 View full prescriptions</button></div>
       </div>
 
       <div class="card" id="followup-card" style="display:none;">
@@ -1001,6 +1046,7 @@
     $('add-med-btn').addEventListener('click', () => $('med-rows').appendChild(makeMedRow()));
     $('save-rx-btn').addEventListener('click', () => saveConsult(v));
     if ($('ai-btn')) $('ai-btn').addEventListener('click', () => runAI(v));
+    if ($('view-full-rx-btn')) $('view-full-rx-btn').addEventListener('click', () => openFullPrescriptions(p.id, p.name));
 
     // Deworming (age ≥ 2): a "done today" checkbox plus a 6-month recall alert.
     (function setupDeworm() {
@@ -1339,9 +1385,7 @@
     renderRxDetail(data.find(r => r.id === selectedRx));
   }
 
-  function renderRxDetail(rx) {
-    const el = $('rx-detail');
-    if (!rx) { el.innerHTML = '<div class="card"><div class="empty">Select a prescription</div></div>'; return; }
+  function rxSheetHtml(rx) {
     const p = rx.patients || {};
     const ageBits = [];
     if (p.age_years)  ageBits.push(p.age_years  + ' year'  + (p.age_years  == 1 ? '' : 's'));
@@ -1365,13 +1409,7 @@
       return `<li><span class="m-nm">${escapeHtml(head)}</span></li>`;
     };
     const qr = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=' + encodeURIComponent(CLINIC.apptUrl);
-    el.innerHTML = `
-      <div class="no-print actions" style="margin-bottom:12px;">
-        <button class="secondary" id="print-btn">🖨 Print</button>
-        ${followups.length ? '<button class="secondary" id="print-fu-btn" title="Re-feed the original prescription — only the follow-up part prints onto the blank area">🖨 Print follow-up only</button>' : ''}
-        <button class="primary" id="csv-btn">Save for ERP (CSV)</button>
-      </div>
-      <div id="print-area">
+    return `
         <div class="rxsheet">
           <div class="rx-contact">Cell: ${escapeHtml(CLINIC.cell)}<br>L.L: ${escapeHtml(CLINIC.landline)}</div>
           <div class="rx-title">AL-MADINA POLYCLINIC &amp; LABORATORIES</div>
@@ -1434,8 +1472,20 @@
             </div>
             <div class="rx-foot-qr"><img src="${qr}" alt="Scan to book" width="62" height="62"><span>Scan to<br>book online</span></div>
           </div>
-        </div>
-      </div>`;
+        </div>`;
+  }
+
+  function renderRxDetail(rx) {
+    const el = $('rx-detail');
+    if (!rx) { el.innerHTML = '<div class="card"><div class="empty">Select a prescription</div></div>'; return; }
+    const followups = rx.followups || [];
+    el.innerHTML = `
+      <div class="no-print actions" style="margin-bottom:12px;">
+        <button class="secondary" id="print-btn">🖨 Print</button>
+        ${followups.length ? '<button class="secondary" id="print-fu-btn" title="Re-feed the original prescription — only the follow-up part prints onto the blank area">🖨 Print follow-up only</button>' : ''}
+        <button class="primary" id="csv-btn">Save for ERP (CSV)</button>
+      </div>
+      <div id="print-area">${rxSheetHtml(rx)}</div>`;
     const pb = $('print-btn'); if (pb) pb.addEventListener('click', () => window.print());
     const fpb = $('print-fu-btn'); if (fpb) fpb.addEventListener('click', () => {
       // Print ONLY the follow-up block, at its natural position, so it lands on
@@ -1459,6 +1509,68 @@
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `prescription-${rx.id}.csv`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
     toast('CSV downloaded');
+  }
+
+  /* ============ Full-prescription viewer + patient search ============ */
+  // Shape a patient_prescriptions / search row into what rxSheetHtml expects.
+  function rxRowToView(r) {
+    return {
+      id: r.id, created_at: r.created_at, doctor_name: r.doctor_name, notes: r.notes,
+      medicines: r.medicines || [], complaint: r.complaint, examination: r.examination || {},
+      diagnosis: r.diagnosis, lab_advice: r.lab_advice, temperature: r.temperature,
+      weight: r.weight, followups: r.followups || [],
+      patients: { name: r.patient_name, phone: r.phone, age_years: r.age_years, age_months: r.age_months, age_days: r.age_days, gender: r.gender, residence: r.residence },
+    };
+  }
+  function openRxModal(title) {
+    $('rx-modal-title').textContent = title;
+    $('rx-modal-body').innerHTML = '<div class="empty" style="padding:30px;">Loading…</div>';
+    $('rx-modal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeRxModal() {
+    $('rx-modal').classList.remove('open');
+    $('rx-modal-body').innerHTML = '';
+    document.body.style.overflow = '';
+  }
+  async function openFullPrescriptions(patientId, patientName) {
+    if (!patientId) { toast('No patient on file yet', '#ef4444'); return; }
+    openRxModal(patientName ? `Prescriptions — ${patientName}` : 'Prescriptions');
+    const body = $('rx-modal-body');
+    const { data, error } = await sb.rpc('patient_prescriptions', { p_patient_id: patientId });
+    if (error) { body.innerHTML = `<div class="empty" style="padding:30px;">${escapeHtml(error.message)}</div>`; return; }
+    if (!data || !data.length) { body.innerHTML = '<div class="empty" style="padding:30px;">No prescriptions on record for this patient.</div>'; return; }
+    body.innerHTML = `<div class="no-print" style="font-size:12.5px; color:var(--muted); margin-bottom:12px;">${data.length} prescription${data.length===1?'':'s'} · newest first</div>`
+      + data.map(r => rxSheetHtml(rxRowToView(r))).join('');
+  }
+  async function runRxSearch() {
+    const term = $('rx-search-input').value.trim();
+    const out = $('rx-search-results');
+    if (term.replace(/\D/g, '').length < 3 && term.length < 2) {
+      out.innerHTML = '<div class="empty">Type at least 2 letters of a name, or 3 digits of a phone.</div>'; return;
+    }
+    out.innerHTML = '<div class="empty">Searching…</div>';
+    const { data, error } = await sb.rpc('search_patients', { p_query: term });
+    if (error) { out.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; return; }
+    if (!data || !data.length) { out.innerHTML = '<div class="empty">No matching patients with prescriptions.</div>'; return; }
+    out.innerHTML = `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <strong style="color:var(--teal-dark); font-size:13px;">${data.length} match${data.length===1?'':'es'}</strong>
+        <button class="secondary" id="rx-search-clear" style="margin-left:auto; padding:5px 12px; font-size:12px;">Clear</button>
+      </div>` + data.map(r => {
+      const ageBits = [];
+      if (r.age_years)  ageBits.push(r.age_years + 'y');
+      if (r.age_months) ageBits.push(r.age_months + 'm');
+      const meta = [r.phone, ageBits.join(' '), r.residence].filter(Boolean).join(' · ');
+      return `<div class="rx-result" data-id="${r.id}" data-name="${escapeHtml(r.name||'')}">
+        <div style="min-width:0;">
+          <div class="name">${escapeHtml(r.name||'—')}</div>
+          <div class="meta">${escapeHtml(meta)} · last visit ${formatDate(r.last_rx)}</div>
+        </div>
+        <span class="cnt">${r.rx_count} Rx</span>
+      </div>`;
+    }).join('');
+    $('rx-search-clear').addEventListener('click', () => { out.innerHTML = ''; $('rx-search-input').value = ''; });
+    out.querySelectorAll('.rx-result').forEach(it => it.addEventListener('click', () => openFullPrescriptions(it.dataset.id, it.dataset.name)));
   }
 
   /* ====================== LAB (Supabase Storage + lab_tests) ====================== */
