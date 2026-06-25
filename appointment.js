@@ -253,13 +253,77 @@ function buildRxHtml(rx) {
     <div class="rxdoc-foot">Digital copy of your prescription · Al Madina Polyclinic, Beehama</div>
   </div>`;
 }
+// Build a real PDF (works reliably on iPhone via the share sheet / Files,
+// unlike window.print which is flaky on iOS Safari).
+function rxToPdf(list) {
+  const JS = window.jspdf && window.jspdf.jsPDF;
+  if (!JS) return null;
+  const doc = new JS({ unit: 'mm', format: 'a4' });
+  const W = 210, M = 16; let y = 18;
+  const line = (txt, o = {}) => {
+    const size = o.size || 11, style = o.style || 'normal', color = o.color || [27, 23, 64], gap = o.gap || 6;
+    doc.setFont('helvetica', style); doc.setFontSize(size); doc.setTextColor(color[0], color[1], color[2]);
+    doc.splitTextToSize(String(txt), W - 2 * M).forEach((p) => {
+      if (y > 282) { doc.addPage(); y = 18; }
+      doc.text(p, o.center ? W / 2 : M, y, o.center ? { align: 'center' } : undefined); y += gap;
+    });
+  };
+  const rule = () => { doc.setDrawColor(200); doc.line(M, y - 2, W - M, y - 2); y += 3; };
+  list.forEach((rx, i) => {
+    if (i > 0) { doc.addPage(); y = 18; }
+    line('AL-MADINA POLYCLINIC & LABORATORIES', { size: 15, style: 'bold', center: true, gap: 6 });
+    line('1st Floor, Al-Rahat Chinar Shopping Complex, Beehama, Ganderbal', { size: 9, color: [110, 106, 133], center: true, gap: 4 });
+    line('+91 95965 79443  ·  almadinapolyclinic.com', { size: 9, color: [110, 106, 133], center: true, gap: 6 });
+    rule();
+    const date = rx.created_at ? new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    line(`Seen by: ${rx.doctor_name || ''}     Date: ${date}`, { size: 10, gap: 6 });
+    const ab = []; if (rx.age_years) ab.push(rx.age_years + 'y'); if (rx.age_months) ab.push(rx.age_months + 'm'); if (rx.age_days) ab.push(rx.age_days + 'd');
+    line([`Name: ${rx.name || ''}`, ab.length ? `Age: ${ab.join(' ')}${rx.gender ? ' / ' + rx.gender : ''}` : '', rx.weight ? `Weight: ${rx.weight} kg` : '', rx.height ? `Height: ${rx.height} cm` : '', rx.residence ? `R/o: ${rx.residence}` : ''].filter(Boolean).join('     '), { size: 10, gap: 6 });
+    rule();
+    if (rx.complaint) line(`Complaint: ${rx.complaint}`, { size: 10.5, gap: 6 });
+    if (rx.temperature) line(`Temperature: ${rx.temperature} °F`, { size: 10.5, gap: 6 });
+    const ex = rx.examination || {}; const exl = [['General', ex.general], ['Chest', ex.chest], ['Abdomen', ex.abdomen], ['CVS', ex.cvs], ['Other', ex.other]].filter((x) => x[1]);
+    if (exl.length) { line('On Examination:', { size: 10.5, style: 'bold', gap: 5 }); exl.forEach(([k, v]) => line(`   • ${k}: ${v}`, { size: 10, gap: 5 })); }
+    if (rx.diagnosis) line(`Diagnosis: ${rx.diagnosis}`, { size: 10.5, style: 'bold', gap: 6 });
+    if (rx.lab_advice) line(`Investigations: ${rx.lab_advice}`, { size: 10.5, gap: 6 });
+    y += 2; line('Rx', { size: 16, style: 'bold', gap: 7 });
+    const meds = Array.isArray(rx.medicines) ? rx.medicines : [];
+    if (meds.length) meds.forEach((m, idx) => { const dose = [m.dosage, m.unit].filter(Boolean).join(' '); line(`${idx + 1}. ${(m.type ? m.type + ' ' : '') + (m.name || '')}${dose ? ' — ' + dose : ''}${m.frequency ? ' · ' + m.frequency : ''}`, { size: 11, gap: 7 }); });
+    else line('No medicines prescribed.', { size: 10, color: [110, 106, 133], gap: 6 });
+    const fus = Array.isArray(rx.followups) ? rx.followups : [];
+    if (fus.length) {
+      y += 2; line('Follow-up notes:', { size: 10.5, style: 'bold', gap: 5 });
+      fus.forEach((f) => { const pr = []; if (f.complaint) pr.push('Complaint: ' + f.complaint); if (f.examination) pr.push('Exam: ' + f.examination); if (f.treatment) pr.push('Treatment: ' + f.treatment); if (f.investigation) pr.push('Ix: ' + f.investigation); if (f.note) pr.push(f.note); line(`${f.date || ''} — ${pr.join(' · ')}`, { size: 9.5, gap: 5 }); });
+    }
+  });
+  return doc;
+}
+async function downloadRx(list) {
+  const doc = rxToPdf(list);
+  if (!doc) { try { window.print(); } catch {} return; }   // fallback if lib failed to load
+  const blob = doc.output('blob');
+  const fname = 'AlMadina-Prescription.pdf';
+  try {
+    const file = new File([blob], fname, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Prescription' });   // iOS/Android: Save to Files / Photos / WhatsApp
+      return;
+    }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  const url = URL.createObjectURL(blob);
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (isIOS) { window.location.href = url; }                  // opens the PDF in Safari → Share / Save
+  else { const a = document.createElement('a'); a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove(); }
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
 function showRxView(list) {
   const key = list.map(r => r.token_number + ':' + r.released_at).join('|');
   if (rxShownKey === key && !states.rx.classList.contains('hidden')) return;  // already shown
   rxShownKey = key;
   clearInterval(statusTimer);
   $('rx-sheets').innerHTML = list.map(buildRxHtml).join('');
-  const dl = $('rx-download-btn'); if (dl) dl.onclick = () => window.print();
+  const dl = $('rx-download-btn'); if (dl) dl.onclick = () => downloadRx(list);
   show('rx');
 }
 

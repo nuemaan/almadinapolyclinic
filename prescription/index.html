@@ -1412,6 +1412,7 @@
       medicines: r.medicines || [], complaint: r.complaint, examination: r.examination || {},
       diagnosis: r.diagnosis, lab_advice: r.lab_advice, temperature: r.temperature,
       weight: r.weight, followups: r.followups || [], is_followup: r.is_followup, rx_released_at: r.rx_released_at,
+      patient_id: r.patient_id, balance: Number(r.balance) || 0,
       patients: { name: r.patient_name, phone: r.phone, age_years: r.age_years, age_months: r.age_months, age_days: r.age_days, gender: r.gender, residence: r.residence },
       visits: { token_number: r.token_number },
     }));
@@ -1536,7 +1537,28 @@
         <button class="primary" id="csv-btn">Save for ERP (CSV)</button>
         <button class="${rx.rx_released_at ? 'secondary' : 'primary'}" id="send-patient-btn" style="${rx.rx_released_at ? '' : 'background:#7c3aed;'}">${rx.rx_released_at ? '✓ Sent to patient — tap to unsend' : '📲 Send to patient'}</button>
       </div>
+      <div class="no-print" id="balance-box" style="margin-bottom:12px; padding:11px 14px; border-radius:12px; border:1px solid ${rx.balance > 0 ? '#fecaca' : '#e2e8f0'}; background:${rx.balance > 0 ? '#fef2f2' : '#f8fafc'}; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span style="font-weight:800; color:${rx.balance > 0 ? '#b91c1c' : '#475569'};">${rx.balance > 0 ? '⚠ Previous balance: ₹' + rx.balance.toFixed(2) : '💰 Pharmacy balance: none'}</span>
+        <div style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+          <span style="font-size:13px; color:var(--muted);">Balance ₹</span>
+          <input id="balance-input" type="number" min="0" step="1" inputmode="decimal" value="${rx.balance > 0 ? rx.balance : ''}" placeholder="0" style="width:92px; padding:7px 9px; border:1px solid #d8e0e0; border-radius:8px; font-size:14px;">
+          <button class="secondary" id="balance-save" style="padding:7px 12px;">Save</button>
+          ${rx.balance > 0 ? '<button class="primary" id="balance-clear" style="padding:7px 12px; background:#16a34a;">Clear (paid)</button>' : ''}
+        </div>
+      </div>
       <div id="print-area">${rxSheetHtml(rx)}</div>`;
+    async function saveBalance(amount) {
+      if (!rx.patient_id) { toast('No patient on file', '#ef4444'); return; }
+      const { data, error } = await sb.rpc('set_patient_balance', { p_patient_id: rx.patient_id, p_amount: amount });
+      if (error) { toast('Failed: ' + (error.message || error), '#ef4444'); return; }
+      rx.balance = Number(data) || 0;
+      toast(amount > 0 ? `Balance set to ₹${rx.balance.toFixed(2)}` : 'Balance cleared ✓', '#16a34a');
+      loadPrescriptions();
+    }
+    const bsave = $('balance-save');
+    if (bsave) bsave.addEventListener('click', () => { const v = parseFloat(($('balance-input').value || '').trim()); saveBalance(isNaN(v) ? 0 : Math.max(0, v)); });
+    const bclear = $('balance-clear');
+    if (bclear) bclear.addEventListener('click', () => { if (confirm('Mark this balance as paid and clear it?')) saveBalance(0); });
     const sp = $('send-patient-btn');
     if (sp) sp.addEventListener('click', async () => {
       const turnOn = !rx.rx_released_at;
@@ -1624,15 +1646,25 @@
       if (r.age_years)  ageBits.push(r.age_years + 'y');
       if (r.age_months) ageBits.push(r.age_months + 'm');
       const meta = [r.phone, ageBits.join(' '), r.residence].filter(Boolean).join(' · ');
+      const bal = Number(r.balance) || 0;
       return `<div class="rx-result" data-id="${r.id}" data-name="${escapeHtml(r.name||'')}">
         <div style="min-width:0;">
           <div class="name">${escapeHtml(r.name||'—')}</div>
           <div class="meta">${escapeHtml(meta)} · last visit ${formatDate(r.last_rx)}</div>
         </div>
+        ${bal > 0 ? `<button class="bal-clear" data-id="${r.id}" data-bal="${bal}" title="Mark paid &amp; clear" style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; border-radius:999px; padding:6px 12px; font-weight:800; font-size:12px; cursor:pointer; white-space:nowrap;">₹${bal.toFixed(0)} due · clear</button>` : ''}
         <span class="cnt">${r.rx_count} Rx</span>
       </div>`;
     }).join('');
     $('rx-search-clear').addEventListener('click', () => { out.innerHTML = ''; $('rx-search-input').value = ''; });
+    out.querySelectorAll('.bal-clear').forEach(b => b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!confirm(`Clear ₹${b.dataset.bal} balance for this patient (mark paid)?`)) return;
+      b.disabled = true;
+      const { error } = await sb.rpc('set_patient_balance', { p_patient_id: b.dataset.id, p_amount: 0 });
+      if (error) { toast('Failed: ' + error.message, '#ef4444'); b.disabled = false; return; }
+      toast('Balance cleared ✓', '#16a34a'); runRxSearch();
+    }));
     out.querySelectorAll('.rx-result').forEach(it => it.addEventListener('click', () => openFullPrescriptions(it.dataset.id, it.dataset.name)));
   }
 
