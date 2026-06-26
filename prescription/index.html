@@ -928,6 +928,13 @@
     detail.innerHTML = `
       <div class="card">
         <h2>Consultation — Token #${v.token_number} ${v.is_followup ? '<span class="pill" style="background:#e0e7ff;color:#4338ca;vertical-align:middle;">Follow-up</span>' : '<span class="pill" style="background:#dcfce7;color:#15803d;vertical-align:middle;">New</span>'}</h2>
+        <div style="display:flex; align-items:center; gap:8px; margin:-2px 0 14px;">
+          <span style="font-size:12px; color:var(--muted); font-weight:800; text-transform:uppercase; letter-spacing:.04em;">Treat as</span>
+          <div style="display:inline-flex; border:1px solid var(--teal-soft); border-radius:10px; overflow:hidden;">
+            <button type="button" class="fu-seg" data-fu="new" style="padding:7px 16px; border:0; cursor:pointer; font-weight:800; font-size:13px; background:${v.is_followup ? '#fff' : 'var(--teal)'}; color:${v.is_followup ? 'var(--muted)' : '#fff'};">New</button>
+            <button type="button" class="fu-seg" data-fu="followup" style="padding:7px 16px; border:0; cursor:pointer; font-weight:800; font-size:13px; background:${v.is_followup ? '#4338ca' : '#fff'}; color:${v.is_followup ? '#fff' : 'var(--muted)'};">Follow-up</button>
+          </div>
+        </div>
         <div class="grid">
           <div><label>Patient name <span style="font-weight:500; text-transform:none; color:var(--muted);">(editable — fix spelling)</span></label><input id="dq-name" value="${escapeHtml(p.name||'')}" placeholder="Patient full name"></div>
           <div><label>Phone <span style="font-weight:500; text-transform:none; color:var(--muted);">(editable)</span></label><input id="dq-phone" inputmode="numeric" maxlength="10" value="${escapeHtml(p.phone||'')}" placeholder="10-digit mobile"></div>
@@ -1173,7 +1180,24 @@
       ['hist-exam-card', 'medicines-card'].forEach(id => { const el = $(id); if (el) el.style.display = 'none'; });
       const sx = $('save-rx-btn'); if (sx) sx.style.display = 'none';
       if (lastRx) revealFollowup(lastRx);
+      else {
+        const card = $('followup-card'); if (card) card.style.display = '';
+        const fe = $('fu-existing'); if (fe) fe.innerHTML = '<div style="color:#b91c1c; font-size:12.5px; margin-bottom:8px;">⚠ No previous prescription in the last 14 days to attach a follow-up to. Switch to “New” to write a fresh prescription.</div>';
+      }
     }
+
+    // Doctor override: mark this visit New or Follow-up (overrides the auto rule).
+    detail.querySelectorAll('.fu-seg').forEach(btn => btn.addEventListener('click', async () => {
+      const want = btn.dataset.fu === 'followup';
+      if (want === !!v.is_followup) return;
+      detail.querySelectorAll('.fu-seg').forEach(b => b.disabled = true);
+      const { error } = await sb.rpc('set_followup_override', { p_visit_id: v.id, p_value: want });
+      if (error) { toast('Failed: ' + (error.message || error), '#ef4444'); detail.querySelectorAll('.fu-seg').forEach(b => b.disabled = false); return; }
+      v.is_followup = want;
+      toast(want ? 'Marked as Follow-up' : 'Marked as New', '#4338ca');
+      renderConsult(v);
+      loadQueue();
+    }));
 
     $('noshow-btn').addEventListener('click', async () => {
       if (!confirm('Mark this patient as no-show?')) return;
